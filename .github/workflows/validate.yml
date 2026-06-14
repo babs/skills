@@ -1,0 +1,43 @@
+name: validate
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-validate:
+    runs-on: ubuntu-latest
+    env:
+      # Pinned release key fingerprint — fail hard if the published key rotates.
+      CLAUDE_KEY_FPR: 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code (GPG-pinned apt repo)
+        run: |
+          set -euo pipefail
+          sudo install -d -m 0755 /etc/apt/keyrings
+          # /etc/apt/keyrings is root-owned — write via sudo tee, not a bare redirect.
+          curl -fsSL https://downloads.claude.ai/keys/claude-code.asc \
+            | sudo tee /etc/apt/keyrings/claude-code.asc >/dev/null
+          # Security: refuse to proceed if the published key is not the pinned one
+          gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc \
+            | grep -q "fpr:::::::::${CLAUDE_KEY_FPR}:"
+          echo "deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main" \
+            | sudo tee /etc/apt/sources.list.d/claude-code.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq claude-code
+
+      # Offline manifest check — validates marketplace.json, plugin.json and skills.
+      # No API key needed.
+      - name: Validate plugin manifests
+        run: claude plugin validate .
+
+      # `claude plugin validate` does not inspect SKILL.md frontmatter or rule
+      # references — this closes that gap.
+      - name: Validate skills frontmatter & rule references
+        run: bash scripts/validate-skills.sh

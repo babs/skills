@@ -1,0 +1,10 @@
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+
+# Claude Code local state — never commit
+.claude/settings.local.json
+
+# OS noise
+.DS_Store
