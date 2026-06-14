@@ -11,7 +11,9 @@ The repo root *is* the plugin: `.claude-plugin/` holds the manifests and
 `skills/<name>/SKILL.md` is both the Claude plugin skills directory and skills.sh's
 flat discovery layout.
 
-## Install — Claude Code (plugin)
+## Install
+
+### Claude Code (plugin)
 
 ```bash
 claude plugin marketplace add babs/skills
@@ -21,7 +23,7 @@ claude plugin install babs@babs-skills
 `babs/skills` is GitHub shorthand; the full URL
 `https://github.com/babs/skills.git` works too.
 
-### Auto-update (recommended)
+#### Auto-update (recommended)
 
 Third-party marketplaces have background auto-update **disabled by default**. Enable
 it via the UI (`/plugin` → **Marketplaces** → `babs-skills` → **Enable auto-update**)
@@ -34,7 +36,7 @@ jq '.extraKnownMarketplaces["babs-skills"].autoUpdate = true' "$CFG" > "$CFG.tmp
 
 Manual fallback anytime: `claude plugin update babs`.
 
-## Install — skills.sh (any agent)
+### skills.sh (any agent)
 
 ```bash
 npx skills add babs/skills
