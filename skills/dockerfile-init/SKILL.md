@@ -112,14 +112,14 @@ Adapt the build path (`./cmd/app-name`) to match the project's actual entrypoint
 #### Node.js
 
 ```dockerfile
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-slim
+FROM node:24-slim
 # ... ARGs, LABELs ...
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
