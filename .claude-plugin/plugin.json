@@ -6,5 +6,12 @@
     "name": "babs",
     "email": "damien-claudeai@degois.info"
   },
-  "keywords": ["review", "dockerfile", "golang", "python", "git", "privatebin"]
+  "keywords": [
+    "review",
+    "dockerfile",
+    "golang",
+    "python",
+    "git",
+    "privatebin"
+  ]
 }
