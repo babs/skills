@@ -58,6 +58,12 @@ collides with another plugin.
 | `go-init` | `/go-init` | Initialize a new Go HTTP service or align an existing one to the standard |
 | `python-init` | `/python-init` | Initialize a new Python FastAPI project or align an existing one to the standard |
 
+### Implement
+
+| Skill | Invocation | Description |
+|-------|-----------|-------------|
+| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, escalation on design forks, and a human merge gate |
+
 ### Review → commit
 
 | Skill | Invocation | Description |
