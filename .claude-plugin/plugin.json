@@ -1,7 +1,7 @@
 {
   "name": "babs",
   "description": "Daily-driver toolkit: project init standards (Dockerfile, Go, Python), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities (PrivateBin, Markdown-to-HTML clipboard).",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "babs",
     "email": "damien-claudeai@degois.info"
