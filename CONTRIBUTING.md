@@ -23,7 +23,20 @@
 
 3. Update the skills table in [README.md](README.md).
 
-4. Bump `version` in `.claude-plugin/plugin.json` (semver) when releasing.
+4. **Do not touch `.claude-plugin/plugin.json` `version`** in a feature PR — the plugin
+   version is set automatically from the release tag (see [Release](#release)). Leaving it
+   out of feature PRs avoids cross-PR conflicts on the version line.
+
+## Release
+
+The plugin version is owned by the release **tag**, not by PRs. To cut a release:
+
+1. Merge the feature PR(s) to `master`.
+2. Push a semver tag: `git tag v1.2.0 && git push origin v1.2.0`.
+
+The `release` workflow then writes `1.2.0` into `.claude-plugin/plugin.json` on `master`
+(`chore(release): v1.2.0`) and publishes a GitHub release. Consumers with `autoUpdate: true`
+pick up the new `master` at next Claude Code startup.
 
 ## Test before opening a PR
 
