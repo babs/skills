@@ -8,8 +8,8 @@ description: >-
   merge, and a living unaddressed-points list mirrored to the tracker. Use when the user says
   "implement loop", "run the loop", "work through the plan/handoff autonomously", or hands a
   handoff/plan/ticket and asks you to build it end-to-end.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, AskUserQuestion
-version: "1.0.0"
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
+version: "1.1.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -24,13 +24,30 @@ escalate on design forks, human-gate the merge, never let findings rot.
 2. **Extract phases + per-phase definition-of-done (DoD).** Use the handoff's if present. If DoD is
    missing or vague, **derive candidates and confirm with the user** — "done" must be checkable (a
    test green, a metric moved, a command exits 0), never a vibe.
-3. **Branch.** Create/checkout the feature branch off the stated base. One branch for the effort;
+3. **Branch / worktree.** Create the feature branch off the stated base. One branch for the effort;
    per-slice commits land on it.
+   - **Isolated worktree (default when the user asks, or when the main checkout is dirty / in use):**
+     create a dedicated `git worktree` so the loop never disturbs the user's working tree:
+     `git worktree add -b <branch> <path> <base>` (put `<path>` outside the repo). **After creating
+     it, operate exclusively from the worktree path** — every Read/Edit/Bash uses worktree paths.
+     **Never `cd` back to the main checkout** (it shows a clean tree → false "work lost" alarm) and
+     **never symlink the main `node_modules` then install through it**. Install deps fresh inside it.
+   - **In-place branch** (no worktree) when the user did not ask for isolation and the checkout is
+     clean and free.
+   Record the mode + worktree path on the tracking list so a resumed session finds it.
 4. **Confirm standing authorization.** Autonomous commits on the feature branch need the user's
    explicit go for *this run* (it overrides the usual per-commit git gate). Ask once if not already
    granted. Pushing and **merging** are NOT covered — see §5.
 5. **Open the tracking list** — a running list of unaddressed points (waived findings, deferred
    work, TODOs, open questions). Persist it in the tracker ticket if one exists, else a scratch file.
+   Use `TaskCreate`/`TaskList` to mirror phases as tasks if helpful.
+6. **Front-load the questions.** Read the whole source, scan every phase, and surface **all
+   foreseeable open questions / design forks up front** — ask them now, in one batch, before coding.
+   This maximizes autonomy afterwards: the loop then runs uninterrupted except at genuinely
+   *crucial* forks that only emerge mid-build (§3). Ask at the **start** and at **crucial forks**,
+   nowhere else — no drip-feed of routine questions. This governs *questions* only: the mandatory
+   **safety stops are never skipped** — a broken upstream hook (§1.2) and the push/merge gate (§5)
+   are not "questions" and still halt the loop for explicit authorization.
 
 ## 1. The loop (per phase, and per reviewable slice within a phase)
 
@@ -119,3 +136,5 @@ result. This skill is the disciplined outer loop; a parallel executor is one pri
 The loop ends when all phases meet DoD, the unaddressed list is empty or every remaining item is a
 recorded conscious waiver, both guards pass on the final state, and the MR is prepared for human
 review. Report: phases done, final guard/coverage state, the unaddressed/waived list, and the MR link.
+If an isolated worktree was used, leave it in place until the user confirms the merge, then propose
+its removal (`git worktree remove <path>`) as a gated step — never auto-remove unmerged work.
