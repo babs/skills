@@ -62,7 +62,7 @@ collides with another plugin.
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
-| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, escalation on design forks, and a human merge gate |
+| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, and a human merge gate |
 
 ### Review → commit
 
