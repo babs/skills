@@ -9,7 +9,7 @@ description: >-
   "implement loop", "run the loop", "work through the plan/handoff autonomously", or hands a
   handoff/plan/ticket and asks you to build it end-to-end.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.1.0"
+version: "1.1.1"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -34,6 +34,9 @@ escalate on design forks, human-gate the merge, never let findings rot.
      **never symlink the main `node_modules` then install through it**. Install deps fresh inside it.
    - **In-place branch** (no worktree) when the user did not ask for isolation and the checkout is
      clean and free.
+   - **Unless the user explicitly stated "worktree" or "in-place"** (and the checkout state does not
+     force a worktree), **ask which mode** as part of the front-loaded questions (§0.6) — do not
+     silently default.
    Record the mode + worktree path on the tracking list so a resumed session finds it.
 4. **Confirm standing authorization.** Autonomous commits on the feature branch need the user's
    explicit go for *this run* (it overrides the usual per-commit git gate). Ask once if not already
