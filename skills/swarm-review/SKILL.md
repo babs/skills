@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 # Swarm Review
@@ -44,7 +44,7 @@ For every agent, the prompt MUST include:
 
 | Lens | Stance (operating assumption) | Focus |
 |---|---|---|
-| **security** | *"Assume an adversary reads this code looking for ways to abuse it. What's the cheapest exploit?"* | Input validation, injection (SQL/cmd/template/XSS), authn/authz, secrets in code or logs, crypto misuse, SSRF, deserialization, dependency CVEs touched by the diff, least-privilege regressions |
+| **security** | *"Assume an adversary reads this code looking for ways to abuse it. What's the cheapest exploit?"* | Input validation, injection (SQL/cmd/template/XSS), authn/authz, secrets in code or logs, crypto misuse, SSRF, deserialization, dependency CVEs touched by the diff, least-privilege regressions. Map findings to OWASP Top 10 / OWASP API Security Top 10 categories and cite CWE IDs; use OWASP ASVS as the checklist for verification depth |
 | **resiliency** | *"Assume this runs at 3 AM during a partial outage. What fails first, and does failure stay contained?"* | Error handling, retry/backoff, timeouts, idempotency, partial-failure paths, resource cleanup, circuit breakers, graceful degradation, race conditions, concurrency, blast radius of failures |
 | **code-quality** | *"Assume a tired teammate inherits this in 6 months. Where will they stumble?"* | Readability, complexity, duplication, dead code, naming, language idioms, simplicity-vs-cleverness, abstraction fit, comments-explain-WHY |
 | **functional** | *"Assume the spec/ticket is what users actually need. Does the code do that, or something adjacent?"* | Does the change actually solve the stated problem? Edge cases, off-by-one, boundary conditions, regressions in adjacent features, behavior under empty/null/large inputs |
