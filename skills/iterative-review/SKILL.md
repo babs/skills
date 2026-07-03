@@ -1,7 +1,7 @@
 ---
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Task
@@ -35,7 +35,7 @@ For each round (max 3):
 
 1. **Assess** — invoke the review skill. Capture every finding. **Do not render the review verbatim and stop.** The review sub-skill returns a structured findings doc; that doc is your input to step 2, not your output to the user. Treat the sub-skill's return like the result of any other tool call — log mentally, then keep going. (You may quote findings inside the triage table in step 3, but only as part of the table.)
 2. **Triage** each finding into exactly one bucket:
-   - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path, documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
+   - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path (classify against OWASP Top 10 / OWASP API Security Top 10 and CWE where it applies), documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
    - **Accept with comment** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Leave a code comment capturing *why* it is acceptable.
    - **Escalate** — the finding touches a design decision or extends scope beyond the original change. Surface to the user; do not silently expand scope.
 3. **Display the triage table, then proceed straight to Fix without waiting for approval:**
