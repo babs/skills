@@ -1,8 +1,8 @@
 ---
 name: go-init
-description: Initialize a new Go HTTP service or align an existing one to the standard
+description: Initialize a new Go HTTP service or align an existing one to the standard. Use when starting any new Go service or project — when the user says "new Go service", "bootstrap/init a Go app", or asks to align an existing Go service to the standard. Never scaffold a Go service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Context

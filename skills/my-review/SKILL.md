@@ -1,8 +1,8 @@
 ---
 name: my-review
-description: Thorough review of all project changes
+description: Thorough review of all project changes. Use BEFORE committing feature work — when an implementation is complete and changes are about to be committed, or when the user says "review this", "review my changes", "check the diff". Feature work must pass a review before committing — prefer this, /iterative-review, or /swarm-review when installed, otherwise an equivalent review skill; then commit via /smart-commit when installed, or an equivalent flow.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(pre-commit run *), Read, Grep, Glob, WebSearch, WebFetch
-version: "1.0.1"
+version: "1.0.2"
 ---
 
 ## Context

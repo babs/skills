@@ -1,8 +1,8 @@
 ---
 name: smart-commit
-description: Interactive branch, conventional commit, and push with user validation
+description: Interactive branch, conventional commit, and push with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
 allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(pre-commit *), AskUserQuestion
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Task
