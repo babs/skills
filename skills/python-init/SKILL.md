@@ -1,8 +1,8 @@
 ---
 name: python-init
-description: Initialize a new Python FastAPI project or align an existing one to the standard
+description: Initialize a new Python FastAPI project or align an existing one to the standard. Use when starting any new Python service or project — when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. Never scaffold a Python service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Context

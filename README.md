@@ -50,13 +50,22 @@ This installs the `SKILL.md` files into the right per-agent skills directory
 Invoked bare (`/smart-commit`) or namespaced (`/babs:smart-commit`) when a name
 collides with another plugin.
 
+> **Auto-triggering:** these skills carry trigger phrases in their descriptions, so
+> the agent invokes them on matching intent without an explicit slash command — e.g.
+> asking to commit routes through `smart-commit`, writing a Dockerfile routes through
+> `dockerfile-init`. Installing the plugin therefore steers commits, reviews, and
+> project scaffolding through these flows in every session. This is safe for
+> mutating flows because the skills gate every git mutation interactively before
+> running it. To opt out, disable the plugin, or block a single skill with a
+> permissions deny rule, e.g. `"deny": ["Skill(skill:*smart-commit)"]`.
+
 ### Project init
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
-| `dockerfile-init` | `/dockerfile-init` | Generate a production Dockerfile or align an existing one to the standard |
-| `go-init` | `/go-init` | Initialize a new Go HTTP service or align an existing one to the standard |
-| `python-init` | `/python-init` | Initialize a new Python FastAPI project or align an existing one to the standard |
+| `dockerfile-init` | `/dockerfile-init` | Generate a production Dockerfile or align an existing one to the standard; auto-triggers on Dockerfile creation intent |
+| `go-init` | `/go-init` | Initialize a new Go HTTP service or align an existing one to the standard; auto-triggers on new-Go-service intent |
+| `python-init` | `/python-init` | Initialize a new Python FastAPI project or align an existing one to the standard; auto-triggers on new-Python-project intent |
 
 ### Implement
 
@@ -68,10 +77,10 @@ collides with another plugin.
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
-| `my-review` | `/my-review` | Thorough review of all project changes |
+| `my-review` | `/my-review` | Thorough review of all project changes; auto-triggers before committing feature work |
 | `iterative-review` | `/iterative-review` | Iterate review + fix rounds on changed code until the tree is clean |
 | `swarm-review` | `/swarm-review` | Multi-perspective parallel review: one focused agent per angle (security, resiliency, quality, functional, docs, coherence, tests), then consolidated findings |
-| `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, and push with user validation |
+| `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, and push with user validation; auto-triggers on any commit intent in interactive sessions |
 
 ### Tools / helpers
 

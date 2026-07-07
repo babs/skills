@@ -1,7 +1,7 @@
 ---
 name: iterative-review
-description: Iterate review + fix rounds on changed code until the tree is clean
-version: "1.0.1"
+description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
+version: "1.0.2"
 ---
 
 ## Task

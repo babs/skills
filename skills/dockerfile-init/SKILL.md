@@ -1,8 +1,8 @@
 ---
 name: dockerfile-init
-description: Generate a production Dockerfile or align an existing one to the standard
+description: Generate a production Dockerfile or align an existing one to the standard. Use whenever creating or substantially reworking a Dockerfile — when the user says "write a Dockerfile", "containerize/dockerize this", or asks to align an existing Dockerfile to the standard. Never write a Dockerfile from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Context
