@@ -1,8 +1,11 @@
 ---
 name: my-review
 description: Thorough review of all project changes. Use BEFORE committing feature work — when an implementation is complete and changes are about to be committed, or when the user says "review this", "review my changes", "check the diff". Feature work must pass a review before committing — prefer this, /iterative-review, or /swarm-review when installed, otherwise an equivalent review skill; then commit via /smart-commit when installed, or an equivalent flow.
-allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(pre-commit run *), Read, Grep, Glob, WebSearch, WebFetch
-version: "1.0.2"
+# Bash + Write unrestricted: the evidence bar below DEMANDS execution (run the suite, build the
+# image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
+# scratch files; the review itself must not modify the tree under review.
+allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
+version: "1.1.1"
 ---
 
 ## Context
@@ -26,6 +29,42 @@ Review as if this code will run in production under heavy load at 3 AM with no o
 - **Documentation**: if documentation exists (README, guides, etc.), verify accuracy against actual code (endpoints, config, usage examples, CLI flags). Any inconsistency between documentation/specs and actual code or behavior is **High severity at minimum** — never rate it Medium or below
 - **Test and codecov**: if defined in the project, run the test suite and coverage, analyse/complete tests and code cov focussing on functional code; report any failure as a finding
 - **Pre-commit hooks**: if the project defines pre-commit hooks (or equivalent lint/format gates), run them on the changes and report any failure as a finding
+
+<!-- block: review-doctrine -->
+## The evidence bar — reading is not verification
+
+A Critical or High finding must carry **evidence you produced**, not an argument you constructed:
+
+- The command you ran and the output you saw. `curl` it, `pytest` it, `docker build` it, `issubclass()`
+  it, `psql` it.
+- If the defect is in code that can be executed, **execute it**. Scaffold a throwaway project if that is
+  what it takes; it costs minutes.
+- **Break it on purpose**: delete the fix and confirm the test goes red; inject the drift and confirm the
+  check fails. A guard nobody has bypassed is a guard nobody has tested.
+- Cannot run it? Say `[unverified]` in the finding. That is honest and useful. Silently implying you ran
+  it is neither.
+
+Findings from reading alone are hypotheses. Ship them as hypotheses.
+
+## The fix bar — do not propose decoration
+
+Every fix you propose is one of three tiers. Name the tier.
+
+| Tier | What it is | Verdict |
+|---|---|---|
+| **T0 — decoration** | A promise: *"keep them in sync"*, *"remember to"*, *"document that"*, *"be careful"*, *"reviewers should check"* | **Never propose alone.** It is the bug wearing a hat |
+| **T1 — instance fix** | Repairs this occurrence | Acceptable when no T2 exists, or T2 costs more than the bug |
+| **T2 — class fix** | Makes the defect **un-shippable**: a test that fails without it, a lint rule, a CI gate, a type, a schema, an invariant, a deleted duplicate | **Prefer this whenever it exists and is cheap** |
+
+If you propose T1 where a T2 exists, **say so explicitly and justify it** — name the cost of the T2 and
+why it is not worth paying today. Let the human overrule you. Quietly choosing the cheap path and
+presenting it as the fix is the failure this bar exists to prevent.
+
+**The tells of a T0 masquerading as a fix**: it adds words to a document and changes no behaviour; it
+relies on a future human remembering; it would not have caught the bug that just happened. Ask of every
+fix: *"if this had been in place last week, would the defect have been impossible — or merely
+discouraged?"*
+<!-- /block -->
 
 ## Output
 

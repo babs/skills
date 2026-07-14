@@ -2,7 +2,7 @@
 name: smart-commit
 description: Interactive branch, conventional commit, and push with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
 allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(pre-commit *), AskUserQuestion
-version: "1.0.1"
+version: "1.1.0"
 ---
 
 ## Task
@@ -37,12 +37,22 @@ Prepare and execute a clean git workflow: branch, commit, and optionally push --
    - **Never add validation/process notes** ("verified locally", "tests pass", "act dry-run green", "230/230"). Those belong in the PR description, not durable history — and they rot.
    - **No attribution trailers.** Never add a `Co-Authored-By:` line or any AI/tool attribution (`Generated with …`, `Co-Authored-By: Claude`, signatures, footers) to the commit — not in subject, body, or footer. The same applies to any PR/MR title or description you create in step 6.
    - **Self-check each line:** "could someone derive this from `git show` + the upstream changelog?" — if yes, delete it. Don't restate what the diff already says.
-4. **Pre-flight checks**: if `.pre-commit-config.yaml` exists, run `pre-commit run --all-files`. Distinguish three outcomes:
+4. **Pre-flight gates — if the project defines one, it MUST be run and it MUST pass.** Not "if it seems relevant", not "the diff is small", not "it was green earlier". Before proposing anything in step 5, go and look for both gates, and say what you found:
+   - **Lint/format gate** — `.pre-commit-config.yaml` (or the project's equivalent: `lefthook.yml`, `husky`, a `lint` target). Present ⇒ run it (`pre-commit run --all-files`).
+   - **Test gate** — a test command declared anywhere the project declares one: a `test` target in the `Makefile`, `scripts.test` in `package.json`, pytest config in `pyproject.toml`/`pytest.ini`, `*_test.go`, `cargo test`… Present ⇒ run it.
+
+   **Not finding a gate is a finding, and you must state it** ("no pre-commit config; no test command declared") — a silent skip is indistinguishable from a gate you chose not to run, and that is the shortcut this step exists to remove.
+
+   **Read the report, not just the exit status.** An aggregate target can return 0 while a suite inside it failed (a `.ONESHELL` Makefile without `set -e` does exactly that, and so does any `a && b` chain that ends on a passing command). If the exit code and the output disagree, the output wins — and say so, because the project's gate is then itself broken.
+
+   Distinguish three outcomes:
    - **Auto-fix applied** (e.g. ruff-format reformatted files): review the modifications, then re-stage and proceed.
    - **Project-code failure** (lint error, type error, broken test): fix the root cause before proceeding.
    - **Hook itself broken upstream** (e.g. tool incompatible with current Python/Node): stop and ask the user how to proceed. Never use `SKIP=<hook>`, `--no-verify`, `--no-gpg-sign` etc. without explicit user authorization in the same turn.
 
-   If the project defines a test command (in `package.json`, `Makefile`, `pyproject.toml`, etc.), run the suite and report failures — never commit over a red test without explicit user authorization. When the project is set up for coverage (e.g. `pytest-cov`, `go test -cover`, `nyc`/`c8`), run it too, report the figure, and flag functional code paths in the diff left uncovered.
+   **A red gate blocks the commit.** Fix the root cause. Committing over a failing lint gate or a failing test needs the user's explicit authorization *in the same turn*, and the reason is surfaced in the step-5 proposal — never waved through, never deferred to "I'll fix it in the next commit". "The failure is unrelated to my diff" is a claim to verify (stash the change, re-run), not a licence to proceed.
+
+   When the project is set up for coverage (e.g. `pytest-cov`, `go test -cover`, `nyc`/`c8`), run it too, report the figure, and flag functional code paths in the diff left uncovered.
 5. **Ask for validation**: present the proposed branch name (or current branch if staying), the commit message, and any PR/MR metadata resolved from your agent instructions (see "PR/MR metadata" below). Then ask the user to approve, adjust, or choose scope [1) branch+commit+push / 2) branch+commit+push + open PR/MR / 3) branch+commit+push + open **draft** PR/MR / 4) branch+commit only / 5) adjust]. The create-PR/MR mechanism is resolved from the remote's forge (`git remote get-url origin`): **GitHub** → `gh pr create` (`--draft` for draft); **GitLab** → `git push` with `-o merge_request.create` (`-o merge_request.draft` for draft). This is the approval gate for the chosen scope -- do not re-prompt for the operations covered by that scope in step 6.
 
    **Out-of-scope operations require a fresh per-turn gate.** If after step 6 the conversation expands to operations beyond the originally-approved scope -- force-push, `commit --amend`, tag creation, tag push, PR/MR merge, branch deletion, `git reset` -- those each need their own explicit "yes/go/proceed" in the same turn they run, per your global git-mutation rule (if your agent instructions define one). The step-5 gate does not cover them.

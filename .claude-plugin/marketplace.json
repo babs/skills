@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "babs-skills",
-  "description": "babs' personal Claude Code skills: project init standards (Dockerfile, Go, Python), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities (PrivateBin, Markdown-to-HTML clipboard).",
+  "description": "Daily-driver toolkit: spec-driven feature flow (spec \u2192 ship \u2192 review \u2192 commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities.",
   "owner": {
     "name": "babs",
     "email": "damien-claudeai@degois.info"
@@ -9,8 +9,19 @@
   "plugins": [
     {
       "name": "babs",
-      "description": "Daily-driver toolkit: project init standards (Dockerfile, Go, Python), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities (PrivateBin, Markdown-to-HTML clipboard).",
-      "keywords": ["review", "dockerfile", "golang", "python", "git", "privatebin"],
+      "description": "Daily-driver toolkit: spec-driven feature flow (spec \u2192 ship \u2192 review \u2192 commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities.",
+      "keywords": [
+        "spec",
+        "review",
+        "fastapi",
+        "postgres",
+        "react",
+        "dockerfile",
+        "golang",
+        "python",
+        "git",
+        "privatebin"
+      ],
       "source": "./"
     }
   ]
