@@ -4,6 +4,9 @@ paths: **/*.go,**/go.mod
 
 # Go Project Guidelines
 
+- Stateless between requests: `rules/design.md` — language-agnostic and mandatory. Go-specific note:
+  the allowed per-process wiring singletons are the constructor-injected / `sync.Once` ones
+  (e.g. config, DB pool, HTTP client — whichever of these the service actually wires)
 - Go 1.26.3 (latest stable to date, check <https://go.dev/dl/> for updates) for new projects
 - Logging: `zap` (`go.uber.org/zap`), auto-detect TTY → console (`NewDevelopmentConfig`), no TTY → JSON (`NewProductionConfig`), overridable via env/flag
 - ISO8601 timestamps, log level from string (`zapcore.ParseLevel`), always `defer logger.Sync()`
