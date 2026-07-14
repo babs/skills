@@ -59,8 +59,10 @@ Both lines can end up as valid NDJSON — and the second one is still worthless.
 - Structure: `tests/conftest.py`, `tests/test_api.py`, `tests/test_e2e.py`, `tests/fixtures/`
 - Use `httpx.ASGITransport` + `AsyncClient` for FastAPI tests
 - Extract dependencies for mocking (`patch.object` on factory functions)
-- E2E tests: mark with `@pytest.mark.e2e`, skip with `pytest.skip()` when infra unavailable
-- pytest config: `asyncio_mode = "auto"`, `addopts = "-v --tb=short"`
+- E2E tests: mark with `@pytest.mark.e2e`; `pytest.skip()` when infra unavailable **locally only** —
+  `pytest.fail()` when `CI` is set, or the layer quietly never runs (see `rules/postgres.md`)
+- pytest config: `asyncio_mode = "auto"`, `addopts = "-v --tb=short --strict-markers"` — a typo'd
+  marker must error, not silently move e2e tests into the fast layer
 
 ## Tooling
 
@@ -125,6 +127,12 @@ Always set `name` and `version` in `[project]`, `requires-python = ">=3.14"`.
 - **Credentials are `SecretStr`**, never `str`. A plain `str` password ends up in a `repr()`, a
   `model_dump()`, or a traceback — and from there in the log collector. Call `.get_secret_value()` only
   where the value is actually consumed
+
+## Stateless between requests
+
+See `rules/design.md` — language-agnostic and mandatory. Python-specific note: the allowed
+per-process wiring singletons are settings, the engine (`@lru_cache` — `rules/postgres.md`), and the
+shared httpx client (created in `lifespan`) — all plumbing, never request data.
 
 ## Shutdown
 

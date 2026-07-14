@@ -98,6 +98,9 @@ instructions — the same rule `rules/agents-md.md` gives you.
 2. Reference it from the skills that need it, **one explicit path per reference**:
    `${CLAUDE_PLUGIN_ROOT}/rules/<topic>.md`. Never brace-expand (`rules/{a,b}.md`) —
    `scripts/validate-skills.sh` cannot see those, so a typo'd rule would pass CI silently.
+   A rule may also point at a sibling rule with a bare `rules/<topic>.md` path (e.g.
+   `python.md` → `rules/design.md`); these rule→rule pointers are not gate-checked, so
+   double-check the target exists.
 3. If a skill must *show* the rule's code, wrap it in a `<!-- block: -->` and include it (above).
 4. `bash scripts/validate-skills.sh` must pass.
 

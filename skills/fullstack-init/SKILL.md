@@ -21,6 +21,7 @@ variants):
 
 | Rule | Owns |
 |---|---|
+| `${CLAUDE_PLUGIN_ROOT}/rules/design.md` | stateless-between-requests doctrine — where every kind of state lives |
 | `${CLAUDE_PLUGIN_ROOT}/rules/python.md` | dependency floors, config/SecretStr, logging, run.sh, shutdown, httpx |
 | `${CLAUDE_PLUGIN_ROOT}/rules/postgres.md` | engine/session (`db.py`), DB-unavailable handler, models, migrations, both test layers, the `test-e2e` Makefile recipe, the two-role split |
 | `${CLAUDE_PLUGIN_ROOT}/rules/react.md` | frontend stack/layout, SPA guard + its five regression tests, vitest coverage floor |
