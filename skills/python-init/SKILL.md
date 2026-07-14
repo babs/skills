@@ -1,8 +1,8 @@
 ---
 name: python-init
-description: Initialize a new Python FastAPI project or align an existing one to the standard. Use when starting any new Python service or project — when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. Never scaffold a Python service from habit; invoke this skill instead.
+description: Initialize a new Python FastAPI service — no database, no UI — or align an existing one to the standard. Use when starting a plain Python service or API, when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. If the app needs PostgreSQL or a React UI, use fullstack-init instead. Never scaffold a Python service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.1"
+version: "1.2.0"
 ---
 
 ## Context
@@ -24,39 +24,51 @@ For **new projects**, create all files. For **existing projects**, check each it
 
 #### pyproject.toml
 
-**Standard config:**
+**Runtime + dev dependency floors are canonical in `${CLAUDE_PLUGIN_ROOT}/rules/python.md`** ("Default
+stack (FastAPI) — the source of truth"); the copies below are injected mechanically by `scripts/sync_blocks.py` — never edit
+them here, edit the rule and run `--fix`. A hand-maintained second copy is exactly how
+`fastapi>=0.115` and `fastapi>=0.118` came to coexist.
+
 ```toml
 [project]
 name = "project-name"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.0",
-    "pydantic-settings>=2.0",
-    "python-dotenv>=1.0.0",
-    "structlog>=24.0.0",
-    "fastapi-structured-logging>=0.5.0",
-    "httpx>=0.28.0",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-instrumentation-fastapi>=0.44b0",
-    "opentelemetry-instrumentation-httpx>=0.44b0",
-    "opentelemetry-exporter-otlp>=1.20.0",
-]
+```
 
+<!-- include: rules/python.md#fastapi-deps -->
+```toml
+dependencies = [
+    "fastapi>=0.118",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+    "structlog>=24.0",
+    "fastapi-structured-logging>=0.6",
+    "httpx>=0.28",
+    "opentelemetry-api>=1.29",
+    "opentelemetry-sdk>=1.29",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-instrumentation-httpx>=0.50b0",
+    "opentelemetry-exporter-otlp>=1.29",
+]
+```
+<!-- /include -->
+
+<!-- include: rules/python.md#fastapi-dev-deps -->
+```toml
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=5.0",
-    "mypy>=1.13.0",
-    "ruff>=0.8.0",
-    "pre-commit>=4.0.0",
-    "detect-secrets>=1.5.0",
+    "pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=6", "httpx>=0.28",
+    "mypy>=1.13", "ruff>=0.8", "pre-commit>=4", "detect-secrets>=1.5",
 ]
+```
+<!-- /include -->
 
+Then the tool config:
+
+```toml
 [tool.ruff]
 line-length = 110
 target-version = "py314"
@@ -80,7 +92,8 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+# --strict-markers: a typo'd/renamed marker must ERROR — otherwise e2e tests silently join the fast layer
+addopts = "-v --tb=short --strict-markers"
 markers = ["e2e: end-to-end tests requiring external services"]
 ```
 
@@ -115,12 +128,7 @@ repos:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-        args: [--py314-plus]
-
+  # No pyupgrade hook: ruff's UP rules (with --fix) already cover it.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.1
     hooks:
@@ -150,8 +158,10 @@ venv/
 .coverage
 htmlcov/
 *.log
-.secrets.baseline
 ```
+
+`.secrets.baseline` is **committed, never gitignored** — the detect-secrets hook errors out without
+it, breaking the gate on every fresh clone and in CI.
 
 **Align**: merge missing entries into existing `.gitignore`.
 
@@ -161,7 +171,9 @@ htmlcov/
 APP_HOST=0.0.0.0
 APP_PORT=8000
 APP_LOG_LEVEL=INFO
-APP_JSON_LOGS=
+# APP_JSON_LOGS=true|false — leave COMMENTED for auto-detect: `APP_JSON_LOGS=` (empty string) is not
+# "unset", pydantic rejects it as a bool and the app dies at boot
+
 ```
 
 **Align**: create if missing. If exists, add missing `APP_*` vars.
@@ -169,7 +181,7 @@ APP_JSON_LOGS=
 #### Makefile
 
 ```makefile
-.PHONY: install run lint test docker-build docker-run clean
+.PHONY: install run lint test test-e2e coverage docker-build docker-run clean
 
 install:
 	uv sync
@@ -180,8 +192,14 @@ run:
 lint:
 	pre-commit run --all-files
 
-test:
-	uv run pytest
+test:                  # fast layer — the default
+	uv run pytest -m "not e2e"
+
+test-e2e:
+	uv run pytest -m e2e
+
+coverage:              # the enforced floor. Raise it as the project matures; never lower it.
+	uv run pytest -m "not e2e" --cov --cov-report=term-missing --cov-fail-under=80
 
 docker-build:
 	docker build -t app:local .
@@ -197,53 +215,7 @@ clean:
 
 #### Dockerfile
 
-```dockerfile
-FROM python:3.14-slim-trixie AS builder
-# pipefail: fail the build if any stage of a piped RUN fails (e.g. bootstrap below),
-# instead of silently taking the exit code of the last command in the pipe.
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-WORKDIR /app
-COPY pyproject.toml uv.lock ./
-# `-a requirements | uv pip install`: a uv venv has no pip, so `bootstrap -a install`
-# (which shells out to pip) would fail — emit the instrumentor list and let uv install it.
-# Call the .venv binary directly, NOT `uv run`: `uv run` re-syncs the dev group, which
-# would pull dev tooling back into this --no-dev venv that ships in the final image.
-RUN uv sync --frozen --no-dev && \
-    .venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -
-
-FROM python:3.14-slim-trixie
-
-ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
-ARG COMMIT_HASH="00000000-dirty"
-ARG PROJECT_URL="project-name"
-ARG VERSION="v0.0.0"
-
-ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
-ENV COMMIT_HASH=${COMMIT_HASH}
-ENV PROJECT_URL=${PROJECT_URL}
-ENV VERSION=${VERSION}
-
-LABEL org.opencontainers.image.source=${PROJECT_URL}
-LABEL org.opencontainers.image.created=${BUILD_TIMESTAMP}
-LABEL org.opencontainers.image.version=${VERSION}
-LABEL org.opencontainers.image.revision=${COMMIT_HASH}
-
-WORKDIR /app
-COPY --from=builder /app/.venv /app/.venv
-COPY *.py .
-COPY run.sh .
-
-RUN useradd -ms /bin/bash -d /app app && chown -R app:app /app && chmod +x /app/run.sh
-USER app
-
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
-
-EXPOSE 8000
-CMD ["./run.sh"]
-```
+Copy the **flat-layout** template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Python build — flat layout") verbatim — builder with pinned uv + OTel bootstrap, runtime with OCI labels, non-root, `COPY run.sh`.
 
 **Align**: if Dockerfile exists, check for: multi-stage build, OCI labels/ARGs, non-root user, `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`. Report what's missing and fix.
 
@@ -316,26 +288,7 @@ if __name__ == "__main__":
 
 #### run.sh (new projects only)
 
-Entrypoint that **conditionally activates** OpenTelemetry, keyed on `OTEL_EXPORTER_OTLP_ENDPOINT`. `opentelemetry-bootstrap` (Dockerfile build stage) only *installs* the per-library instrumentors; this wrapper launches the app through `opentelemetry-instrument` to activate them — but only when an OTLP endpoint is configured. Without an endpoint it runs plain: no wrapper overhead, no exporter connection errors, and no double-instrumentation if the OTel Operator injects the wrapper itself at deploy time.
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-if [ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]; then
-    echo "OpenTelemetry enabled (endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT})"
-    export OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-project-name}"
-    export OTEL_EXPORTER_OTLP_PROTOCOL="${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}"
-    export OTEL_TRACES_EXPORTER="${OTEL_TRACES_EXPORTER:-otlp}"
-    export OTEL_METRICS_EXPORTER="${OTEL_METRICS_EXPORTER:-otlp}"
-    export OTEL_LOGS_EXPORTER="${OTEL_LOGS_EXPORTER:-none}"
-    # exec → opentelemetry-instrument execs python, so the app is PID 1 (clean SIGTERM).
-    exec opentelemetry-instrument python main.py
-fi
-
-echo "OpenTelemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT set)"
-exec python main.py
-```
+Copy the canonical `run.sh` from `${CLAUDE_PLUGIN_ROOT}/rules/python.md` (OTEL bullet) with `<entrypoint>` = `python main.py`. Conditional OTel activation keyed on `OTEL_EXPORTER_OTLP_ENDPOINT`; assumes single-process uvicorn (multi-worker needs OTel multiprocess handling).
 
 **Align**: create if missing and `chmod +x`. Wire it as the Dockerfile `CMD` (`["./run.sh"]`) and the Makefile `run` target (`uv run ./run.sh`). Assumes single-process uvicorn (the standard `main.py`); multi-worker setups need OTel multiprocess handling.
 
@@ -357,6 +310,32 @@ async def client():
         yield c
 ```
 
+`tests/test_e2e.py` **must exist and must contain at least one `@pytest.mark.e2e` test** — `pytest -m e2e`
+with nothing collected exits **5**, which is a red build, not a pass, and `ship-feature` runs
+`make test-e2e` on every feature. Scaffold one that self-skips when its target is unset:
+
+```python
+import os
+
+import pytest
+from httpx import AsyncClient
+
+pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture
+def base_url() -> str:
+    url = os.environ.get("APP_E2E_URL")
+    if not url:
+        pytest.skip("APP_E2E_URL not set — skipping e2e suite")
+    return url
+
+
+async def test_healthz_live(base_url: str) -> None:
+    async with AsyncClient(base_url=base_url) as ac:
+        assert (await ac.get("/healthz")).status_code == 200
+```
+
 `tests/test_api.py` covers the happy path and an error path (`asyncio_mode = "auto"` auto-collects async tests):
 
 ```python
@@ -371,7 +350,9 @@ async def test_unknown_route_returns_404(client):
     assert resp.status_code == 404
 ```
 
-**Align**: if `tests/` exists, don't overwrite. Check that a test directory + `conftest.py` exist, that the async client uses `httpx.ASGITransport` (not a live server), and that at least `/healthz` and one error path are covered. Report gaps.
+**Align**: if `tests/` exists, don't overwrite. **Check `tests/test_e2e.py` exists and holds at least one
+`@pytest.mark.e2e` test** — the `test-e2e` target exits 5 ("no tests collected") without one, which is a
+red build. Check that a test directory + `conftest.py` exist, that the async client uses `httpx.ASGITransport` (not a live server), and that at least `/healthz` and one error path are covered. Report gaps.
 
 ### 3. Run tooling
 
@@ -385,7 +366,7 @@ chmod +x main.py run.sh  # if present
 
 ### 4. AGENTS.md
 
-Create or update `AGENTS.md` following the AGENTS.md standard.
+Create or update `AGENTS.md` per `${CLAUDE_PLUGIN_ROOT}/rules/agents-md.md`.
 
 ## Output
 

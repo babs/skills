@@ -9,7 +9,7 @@ description: >-
   "implement loop", "run the loop", "work through the plan/handoff autonomously", or hands a
   handoff/plan/ticket and asks you to build it end-to-end.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.1.1"
+version: "1.2.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -129,6 +129,13 @@ Per-slice commits on the feature branch are autonomous. **Pushing** and **mergin
 the MR/PR) are a **human review gate** — machine self-review is signal, not merge authority. Prepare
 the MR per repo conventions, then hand off the merge decision to the user. Propose any git mutation
 beyond branch-local commits (push, force-push, tag, merge) and wait for explicit approval.
+
+## 5b. Related skills
+
+This is the **autonomous** loop, driven from a handoff doc, plan, or ticket. For the human-paced,
+spec-driven flow — a feature proposed by a user, written up by `spec-feature` into `specs/NNN-slug.md`,
+then built phase by phase with a review gate you watch — use **`ship-feature`** instead. Same discipline,
+different pacing and a tighter human leash.
 
 ## 6. Composition
 For a **wide** phase, the dev step can delegate the parallel build to a fan-out executor (e.g. a

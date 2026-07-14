@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent
-version: "1.0.1"
+version: "1.1.1"
 ---
 
 # Swarm Review
@@ -39,6 +39,14 @@ For every agent, the prompt MUST include:
 - **Lens checklist** — the specific items from the table below for that perspective.
 - **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` for every finding. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
 - **Boundary reminder** — *"If a finding sits on the border of another lens, mention it once and tag `[overlap:<lens>]`; do not expand into that lens."*
+- **Execution mandate** — *"Prefer running over reading. If the code can be executed, execute it: run the
+  suite, build the image, curl the endpoint, break the guard and confirm it fails. Every Critical/High
+  must carry the command and the output you observed, or be labelled `[unverified]`."* Give the agents
+  whatever they need to do that: a scratch dir, the repo path, whether `docker`/`make`/network are
+  available. **A swarm that only reads is a swarm of plausible opinions** — and plausible opinions are
+  precisely what shipped the last six defects.
+- **Prior-round context** (re-reviews only) — list what the previous round fixed, and instruct: *"verify
+  those fixes hold; hunt for what they introduced."* Fixes are unreviewed code.
 
 ### The seven lenses
 
@@ -51,6 +59,8 @@ For every agent, the prompt MUST include:
 | **documentation** | *"Assume the only thing a new user has is the docs. Can they succeed?"* | README, ADRs, API/OpenAPI specs, CLI `--help`, code comments WHERE they explain WHY, CHANGELOG, migration notes; accuracy vs. the new code |
 | **global-coherence** | *"Assume the repo already has the utilities and patterns this needs. Did the author find them, or build a parallel one?"* | Architectural fit, naming/module conventions consistent with the rest of the repo, no parallel implementations of existing utilities, layering respected, public surface kept small |
 | **tests-coverage** | *"Assume someone refactors this next sprint without reading the tests. Will the tests catch the breakage?"* | Are new code paths tested? Are edge cases covered? Test quality (no over-mocking, deterministic, fast), missing regression tests for the bug being fixed, coverage of error paths |
+
+The per-agent **Execution mandate** above IS the evidence bar (canonical: `my-review`'s "The evidence bar" section) — it reaches the sub-agents through their prompts; the consolidator itself only merges and never files unverified findings of its own.
 
 ## Consolidate
 

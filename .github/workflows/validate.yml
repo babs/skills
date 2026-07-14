@@ -37,7 +37,10 @@ jobs:
       - name: Validate plugin manifests
         run: claude plugin validate .
 
-      # `claude plugin validate` does not inspect SKILL.md frontmatter or rule
-      # references — this closes that gap.
-      - name: Validate skills frontmatter & rule references
-        run: bash scripts/validate-skills.sh
+      # Runs everything: formatting hooks + the local validate-skills hook (frontmatter, rule
+      # refs, block drift incl. both gates' own unit tests, pin uniformity). One entry point —
+      # a separate validate-skills step would run the same script twice.
+      - name: pre-commit
+        run: |
+          pipx install pre-commit==4.6.0  # pinned like every other tool in this repo; bump deliberately
+          pre-commit run --all-files

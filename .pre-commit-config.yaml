@@ -9,3 +9,14 @@ repos:
         args: [--markdown-linebreak-ext=md]
       - id: mixed-line-ending
         args: [--fix=lf]
+
+  - repo: local
+    hooks:
+      # One entry point: frontmatter, rule references, block drift (sync_blocks.py + its unit
+      # tests), pin uniformity. On drift: `python3 scripts/sync_blocks.py --fix` repairs it.
+      - id: validate-skills
+        name: validate skills (frontmatter + rule refs + block drift + pins)
+        entry: bash scripts/validate-skills.sh
+        language: system
+        files: ^(rules|skills|scripts)/
+        pass_filenames: false

@@ -2,7 +2,7 @@
 name: dockerfile-init
 description: Generate a production Dockerfile or align an existing one to the standard. Use whenever creating or substantially reworking a Dockerfile — when the user says "write a Dockerfile", "containerize/dockerize this", or asks to align an existing Dockerfile to the standard. Never write a Dockerfile from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.1"
+version: "1.2.0"
 ---
 
 ## Context
@@ -52,33 +52,16 @@ Every Dockerfile must have:
 
 #### Python (FastAPI/uvicorn)
 
-```dockerfile
-FROM python:3.14-slim-trixie AS builder
-# pipefail so a failing bootstrap below fails the build instead of being masked.
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-WORKDIR /app
-COPY pyproject.toml uv.lock ./
-# `-a requirements | uv pip install`, not `-a install` (a uv venv has no pip), and the
-# .venv binary directly, not `uv run` (which would re-sync the dev group).
-RUN uv sync --frozen --no-dev && \
-    .venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -
+Copy the **flat-layout** template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Python build — flat layout") verbatim. For packaged `src/` projects (a `[build-system]` in pyproject.toml), use the src-layout template from the same rule instead.
 
-FROM python:3.14-slim-trixie
-# ... ARGs, LABELs ...
-WORKDIR /app
-COPY --from=builder /app/.venv /app/.venv
-COPY *.py .
-RUN useradd -ms /bin/bash -d /app app && chown -R app:app /app
-USER app
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
-EXPOSE 8000
-CMD ["python", "main.py"]
-```
+**OTel is all-or-nothing.** `opentelemetry-bootstrap` only *installs* the instrumentors; nothing activates
+them unless the process is launched through `opentelemetry-instrument`. So either:
 
-If OTEL deps are not in `pyproject.toml`, skip the `opentelemetry-bootstrap` line. Bootstrap only *installs* instrumentors; to *activate* them at runtime see the conditional `run.sh` in the `python-init` skill (gated on `OTEL_EXPORTER_OTLP_ENDPOINT`).
+- **No OTel deps** in `pyproject.toml` → drop the `opentelemetry-bootstrap` line, drop `COPY run.sh`, and
+  use `CMD ["python", "main.py"]`.
+- **OTel deps present** → **create `run.sh` as part of this skill** (a Dockerfile that `COPY`s a missing file fails the build): copy the canonical script from `${CLAUDE_PLUGIN_ROOT}/rules/python.md` (OTEL bullet) with `<entrypoint>` = `python main.py`, `chmod +x`, keep `CMD ["./run.sh"]`.
+
+Shipping the bootstrap without `run.sh` gives you the weight of instrumentation and none of the traces.
 
 **Align checklist**: multi-stage, uv (not pip), OCI labels, non-root user, `PYTHONUNBUFFERED=1`, `PYTHONDONTWRITEBYTECODE=1`, base image `python:3.14-slim-trixie`.
 
@@ -125,7 +108,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY package.json .
-RUN groupadd -r app && useradd -r -g app -d /app app && chown -R app:app /app
+RUN useradd -r -s /usr/sbin/nologin -d /app app && chown -R app:app /app
 USER app
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

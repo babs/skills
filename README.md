@@ -64,13 +64,16 @@ collides with another plugin.
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
 | `dockerfile-init` | `/dockerfile-init` | Generate a production Dockerfile or align an existing one to the standard; auto-triggers on Dockerfile creation intent |
+| `fullstack-init` | `/fullstack-init` | Initialize a FastAPI + PostgreSQL + React project (single image — the SPA is built and served by the backend), or align an existing one; auto-triggers on new-full-stack-app intent |
 | `go-init` | `/go-init` | Initialize a new Go HTTP service or align an existing one to the standard; auto-triggers on new-Go-service intent |
-| `python-init` | `/python-init` | Initialize a new Python FastAPI project or align an existing one to the standard; auto-triggers on new-Python-project intent |
+| `python-init` | `/python-init` | Initialize a plain Python FastAPI service — no database, no UI (those go to `fullstack-init`) — or align an existing one; auto-triggers on new-Python-project intent |
 
-### Implement
+### Spec → implement
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
+| `spec-feature` | `/spec-feature` | Turn a feature request into `specs/NNN-slug.md` — problem, scope, out-of-scope, acceptance criteria, phases with a measurable DoD — before any code; auto-triggers when a feature is proposed |
+| `ship-feature` | `/ship-feature` | Human-paced quality loop against an approved spec: implement → tests → my-review → fix ALL findings → re-review until clean → swarm-review when large → tests + coverage → smart-commit |
 | `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, and a human merge gate |
 
 ### Review → commit
@@ -91,12 +94,22 @@ collides with another plugin.
 
 ## Caveat — init skills need `rules/`
 
-`dockerfile-init`, `go-init`, and `python-init` read shared standards from
+`dockerfile-init`, `fullstack-init`, `go-init`, and `python-init` read shared standards from
 `rules/*.md` via `${CLAUDE_PLUGIN_ROOT}`. That variable is only set on a **full
 plugin install** (the Claude Code path above), where the whole repo — including
 `rules/` — is present. A standalone single-skill install via skills.sh installs only
-that skill's directory and **won't** carry the sibling `rules/`, so those three
+that skill's directory and **won't** carry the sibling `rules/`, so those four
 skills are best used through the Claude plugin install.
+
+## Caveat — `fullstack-init` vendors an external tool
+
+Projects scaffolded by `fullstack-init` run their database migrations with
+[babs/db_migrate](https://github.com/babs/db_migrate) — a single file fetched **at a pinned commit SHA**
+(recorded in the vendoring commit) and committed into the project, so the shipped version is whatever
+your repo holds. It is not a PyPI dependency. It executes DDL with the migration credential, so diff
+it on every upgrade like any other code.
+Its [`llms.txt`](https://github.com/babs/db_migrate/blob/master/llms.txt) is the agent-facing usage
+reference (linked at `master` for readability — the runtime copy itself is SHA-pinned).
 
 ## Contributing
 
