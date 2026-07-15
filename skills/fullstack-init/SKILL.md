@@ -7,7 +7,7 @@ description: >-
   Postgres", or asks to align an existing full-stack project. For an API with no UI and no database,
   use python-init instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep, AskUserQuestion
-version: "2.1.0"
+version: "2.1.1"
 ---
 
 ## Context
@@ -27,6 +27,7 @@ variants):
 | `${CLAUDE_PLUGIN_ROOT}/rules/react.md` | frontend stack/layout, SPA guard + its five regression tests, vitest coverage floor |
 | `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` | OCI labels, the `backend-build` stage (src/ layout, two-phase `uv sync`) |
 | `${CLAUDE_PLUGIN_ROOT}/rules/agents-md.md` | AGENTS.md shape |
+| `${CLAUDE_PLUGIN_ROOT}/rules/bash.md` | any shell script written or touched (`run.sh`, hooks) |
 
 This skill needs the full plugin install (`rules/` present) — it is not standalone.
 
