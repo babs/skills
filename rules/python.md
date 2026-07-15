@@ -21,7 +21,7 @@ paths: **/*.py
 
   # Activate instrumentors ONLY when an endpoint is configured: zero overhead when disabled, no
   # double-instrumentation when the platform's OTel Operator injects the wrapper itself.
-  if [ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]; then
+  if [[ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]]; then
       export OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-<project>}"
       # Logs stay on stdout as JSON (see Logging); without this the SDK log exporter double-emits.
       export OTEL_LOGS_EXPORTER="${OTEL_LOGS_EXPORTER:-none}"

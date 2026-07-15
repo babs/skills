@@ -132,6 +132,9 @@ plugin install** (the Claude Code path above), where the whole repo — includin
 that skill's directory and **won't** carry the sibling `rules/`, so those four
 skills are best used through the Claude plugin install.
 
+`rules/` also holds standalone reference standards (currently `github-actions.md`)
+not wired to any skill — kept as published coding standards.
+
 ## Caveat — `fullstack-init` vendors an external tool
 
 Projects scaffolded by `fullstack-init` run their database migrations with

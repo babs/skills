@@ -2,12 +2,12 @@
 name: python-init
 description: Initialize a new Python FastAPI service — no database, no UI — or align an existing one to the standard. Use when starting a plain Python service or API, when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. If the app needs PostgreSQL or a React UI, use fullstack-init instead. Never scaffold a Python service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.2.0"
+version: "1.2.1"
 ---
 
 ## Context
 
-You are setting up or aligning a Python FastAPI project to the production standard. Follow the rules from `${CLAUDE_PLUGIN_ROOT}/rules/python.md` and `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md`.
+You are setting up or aligning a Python FastAPI project to the production standard. Follow the rules from `${CLAUDE_PLUGIN_ROOT}/rules/python.md` and `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md`; any shell script you write or touch (`run.sh`, hooks) follows `${CLAUDE_PLUGIN_ROOT}/rules/bash.md`.
 
 The user may provide a project name as argument. If not, use the current directory or ask.
 
