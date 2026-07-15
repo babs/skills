@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent
-version: "1.1.1"
+version: "1.2.0"
 ---
 
 # Swarm Review
@@ -37,7 +37,7 @@ For every agent, the prompt MUST include:
 - **Stance line** — the lens-specific operating assumption from the table below. This is **not** a persona ("act grumpy"); it's a frame that biases what the agent prioritises without distorting tone. Include it verbatim in the prompt.
 - **Scope block** — the diff, the changed-files list, and the change summary from the step above.
 - **Lens checklist** — the specific items from the table below for that perspective.
-- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` for every finding. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
+- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` for every finding, plus a **complexity index** for the fix: `cx:S` (localized — one line / one file, no design impact), `cx:M` (multi-site, or needs a new test / small refactor), `cx:L` (design-level or cross-cutting change). Severity says how much it hurts; complexity says how much it costs to fix — report both, never let one influence the other. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
 - **Boundary reminder** — *"If a finding sits on the border of another lens, mention it once and tag `[overlap:<lens>]`; do not expand into that lens."*
 - **Execution mandate** — *"Prefer running over reading. If the code can be executed, execute it: run the
   suite, build the image, curl the endpoint, break the guard and confirm it fails. Every Critical/High
@@ -66,12 +66,26 @@ The per-agent **Execution mandate** above IS the evidence bar (canonical: `my-re
 
 Once all seven agents return:
 
-1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens, e.g. `[security] SQL string built via concatenation src/db.py:42`.
+1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens and complexity index, e.g. `[security] cx:S SQL string built via concatenation src/db.py:42`.
 2. **Deduplicate** — if two lenses raised the same `file:line` with the same root cause, keep one entry and list both lens tags.
 3. **Assign stable IDs** during consolidation (`C1, C2, … H1, H2, …`) so the user can reference findings in follow-up (`"apply C1 and H3"`). Subagents do **not** number their own findings — numbering is the consolidator's job after dedup.
 4. **Top of report**: 2-3 sentence executive summary + a one-line verdict (`ship`, `ship-with-followups`, `block`).
 5. **Bottom of report**: per-lens micro-summary (one line each) so the user can see whether any lens came back clean vs. noisy.
 6. Use the format in [template.md](template.md).
+
+## Report before acting (mandatory)
+
+The deliverable of this skill is the **report**, and the turn ENDS with it — unless explicitly stated
+otherwise (e.g. a fix or feature loop such as `iterative-review`, `implement-loop`, or `ship-feature`,
+whose flow by design acts on findings):
+
+- Show the full consolidated report to the user and **stop**. Do not edit files, apply fixes, or run any
+  mutating command in the same turn — not even "trivial" or "quick win" findings.
+- Fixes happen only after the user explicitly selects findings (e.g. *"apply C1 and H3"*, *"fix all
+  Highs"*). A general "go ahead" earlier in the conversation does not pre-authorise acting on findings
+  the user has not seen.
+- When invoked from another skill or loop, the report is still surfaced in full before anything acts on
+  it; the caller's own flow then decides what happens next.
 
 ## Output discipline
 

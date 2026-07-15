@@ -7,21 +7,21 @@
 <!-- 2-3 sentences: overall risk, the most load-bearing finding, and whether any lens flagged a blocker -->
 
 ### Critical (must fix — blocks merge)
-- **C1.** `[lens]` {issue} `{file}:{line}` — {one-line fix suggestion}
-- **C2.** `[lens]` {issue} `{file}:{line}` — {fix suggestion}
+- **C1.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {one-line fix suggestion}
+- **C2.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {fix suggestion}
 <!-- numbered C1, C2, ...; IDs are stable so the user can reference them in follow-ups. Delete unused placeholder rows, or replace whole section with "None." -->
 
 ### High (should fix before merge)
-- **H1.** `[lens]` {issue} `{file}:{line}` — {fix suggestion}
-- **H2.** `[lens]` {issue} `{file}:{line}` — {fix suggestion}
+- **H1.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {fix suggestion}
+- **H2.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {fix suggestion}
 
 ### Medium (fix soon)
-- **M1.** `[lens]` {issue} `{file}:{line}` — {fix suggestion}
-- **M2.** `[lens]` {issue} `{file}:{line}` — {fix suggestion}
+- **M1.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {fix suggestion}
+- **M2.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}` — {fix suggestion}
 
 ### Low (nice to have)
-- **L1.** `[lens]` {issue} `{file}:{line}`
-- **L2.** `[lens]` {issue} `{file}:{line}`
+- **L1.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}`
+- **L2.** `[lens]` `cx:{S|M|L}` {issue} `{file}:{line}`
 
 ### Positive
 - `[lens]` {what was done well}
