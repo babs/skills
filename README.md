@@ -51,10 +51,10 @@ A width-adaptive Claude Code status line ships at
 `statusline/statusline-command.sh`:
 
 ```
-~/path (git::branch) | model | ctx: 26k/200k (13%) | q: 5h24% ⟳17:32
+~/path (git::branch) | model | ctx: 26k/200k (13%) | q5h: 24% ⟳17:32
 ```
 
-`q:` is the 5-hour quota window (used % + local reset time) from `rate_limits`
+`q5h:` is the 5-hour quota window (used % + local reset time) from `rate_limits`
 — shown only for Pro/Max subscribers and only after the first API response;
 it colours yellow ≥75%, red ≥90%, and disappears entirely otherwise. The line
 also shows a profile badge when `CLAUDE_CONFIG_DIR` points at a custom

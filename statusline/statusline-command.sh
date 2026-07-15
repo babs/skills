@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Claude Code status line — adapts to terminal width:
-#   wide:   ~/current/dir (git::branch) | model | ctx: Nk/Nk (N%) | q: 5hN% ⟳HH:MM
+#   wide:   ~/current/dir (git::branch) | model | ctx: Nk/Nk (N%) | q5h: N% ⟳HH:MM
 #   narrow: ~/current/dir (git::branch)
-#           ctx: Nk/Nk (N%) | q: 5hN% ⟳HH:MM | model
+#           ctx: Nk/Nk (N%) | q5h: N% ⟳HH:MM | model
 
 input=$(cat)
 raw_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd')
@@ -55,20 +55,20 @@ else
     ctx_part=""
 fi
 
-# Quota usage: "q: 5h24% ⟳17:32" — 5-hour window used %% plus its local reset
+# Quota usage: "q5h: 24% ⟳17:32" — 5-hour window used %% plus its local reset
 # time. rate_limits is present only for Pro/Max subscribers and only after the
 # first API response; absent → empty segment.
 q5=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 if [ -n "$q5" ]; then
     q5i=$(printf '%.0f' "$q5")
-    quota_inner="5h${q5i}%"
+    quota_inner="${q5i}%"
     # Append reset clock only if resets_at is present and parses to a valid time.
     reset5=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
     if [ -n "$reset5" ]; then
         reset_fmt=$(date -d "@${reset5}" +%H:%M 2>/dev/null)
         [ -n "$reset_fmt" ] && quota_inner="${quota_inner} $(printf '\xe2\x9f\xb3')${reset_fmt}"
     fi
-    quota_part=" | q: ${quota_inner}"
+    quota_part=" | q5h: ${quota_inner}"
     # Color by how close the 5h window is to its cap: red near cap, yellow high.
     if [ "$q5i" -ge 90 ]; then
         quota_color=$'\e[1;31m'
