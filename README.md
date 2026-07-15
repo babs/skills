@@ -45,6 +45,37 @@ npx skills add babs/skills
 This installs the `SKILL.md` files into the right per-agent skills directory
 (`~/.claude/skills`, `~/.cursor/skills`, …) with cross-agent path detection.
 
+## Status line (optional)
+
+A width-adaptive Claude Code status line ships at
+`statusline/statusline-command.sh`:
+
+```
+~/path (git::branch) | model | ctx: 26k/200k (13%) | q: 5h24% ⟳17:32
+```
+
+`q:` is the 5-hour quota window (used % + local reset time) from `rate_limits`
+— shown only for Pro/Max subscribers and only after the first API response;
+it colours yellow ≥75%, red ≥90%, and disappears entirely otherwise. The line
+also shows a profile badge when `CLAUDE_CONFIG_DIR` points at a custom
+`~/.claude-<profile>`.
+
+Plugins can't set `statusLine`, and `statusLine.command` does **not** expand
+`${CLAUDE_PLUGIN_ROOT}` — nor is the plugin cache path stable across updates. So
+copy the script to a fixed location and point your settings at that path:
+
+```bash
+install -m 755 statusline/statusline-command.sh ~/.claude/statusline-command.sh
+
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+jq '.statusLine = {type: "command", command: "bash ~/.claude/statusline-command.sh"}' \
+  "$CFG" > "$CFG.tmp" && mv "$CFG.tmp" "$CFG"
+```
+
+The script only ships with the full plugin install or a repo clone (a
+single-skill skills.sh install won't carry it). The reset clock uses GNU `date`;
+on macOS/BSD it's silently omitted while the percentage still shows.
+
 ## Skills
 
 Invoked bare (`/smart-commit`) or namespaced (`/babs:smart-commit`) when a name

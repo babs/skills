@@ -1,6 +1,6 @@
 {
   "name": "babs",
-  "description": "Daily-driver toolkit: spec-driven feature flow (spec → ship → review → commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities.",
+  "description": "Daily-driver toolkit: spec-driven feature flow (spec → ship → review → commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, sharing utilities, and an optional quota-aware status line.",
   "version": "1.4.1",
   "author": {
     "name": "babs",
@@ -16,6 +16,7 @@
     "golang",
     "python",
     "git",
-    "privatebin"
+    "privatebin",
+    "statusline"
   ]
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "babs-skills",
-  "description": "Daily-driver toolkit: spec-driven feature flow (spec \u2192 ship \u2192 review \u2192 commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities.",
+  "description": "Daily-driver toolkit: spec-driven feature flow (spec → ship → review → commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, sharing utilities, and an optional quota-aware status line.",
   "owner": {
     "name": "babs",
     "email": "damien-claudeai@degois.info"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "babs",
-      "description": "Daily-driver toolkit: spec-driven feature flow (spec \u2192 ship \u2192 review \u2192 commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, and sharing utilities.",
+      "description": "Daily-driver toolkit: spec-driven feature flow (spec → ship → review → commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, sharing utilities, and an optional quota-aware status line.",
       "keywords": [
         "spec",
         "review",
@@ -20,7 +20,8 @@
         "golang",
         "python",
         "git",
-        "privatebin"
+        "privatebin",
+        "statusline"
       ],
       "source": "./"
     }
