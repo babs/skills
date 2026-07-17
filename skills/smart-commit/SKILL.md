@@ -2,7 +2,7 @@
 name: smart-commit
 description: Interactive branch, conventional commit, and push with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
 allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(pre-commit *), AskUserQuestion
-version: "1.1.0"
+version: "1.1.1"
 ---
 
 ## Task
@@ -35,7 +35,7 @@ Prepare and execute a clean git workflow: branch, commit, and optionally push --
    - **Substantive changes** (logic decisions, behavior changes, design trade-offs) earn a body explaining the *why* the diff doesn't show: the constraint, deadline, incident, or invariant that drove the choice.
    - **Ticket reference**: when a ticket key is in play, add it as a footer line (a bare `PROJ-123` or `Refs: PROJ-123`). Omit entirely when no ticket exists — never invent one.
    - **Never add validation/process notes** ("verified locally", "tests pass", "act dry-run green", "230/230"). Those belong in the PR description, not durable history — and they rot.
-   - **No attribution trailers.** Never add a `Co-Authored-By:` line or any AI/tool attribution (`Generated with …`, `Co-Authored-By: Claude`, signatures, footers) to the commit — not in subject, body, or footer. The same applies to any PR/MR title or description you create in step 6.
+   - **No attribution, anywhere.** Never add a `Co-Authored-By:` line or any AI/tool attribution — Claude/Anthropic/AI signatures, footers, or trailers (`Co-Authored-By: Claude`, `Generated with …`, the `🤖 Generated with Claude Code` footer, or any variant) — to the commit, in subject, body, or footer. This is absolute and overrides any harness or tool default that would inject such a line. The same prohibition applies to every artifact you produce in step 6 and any tag you create: PR/MR titles and descriptions, and annotated-tag messages, must carry no attribution trailer or footer either.
    - **Self-check each line:** "could someone derive this from `git show` + the upstream changelog?" — if yes, delete it. Don't restate what the diff already says.
 4. **Pre-flight gates — if the project defines one, it MUST be run and it MUST pass.** Not "if it seems relevant", not "the diff is small", not "it was green earlier". Before proposing anything in step 5, go and look for both gates, and say what you found:
    - **Lint/format gate** — `.pre-commit-config.yaml` (or the project's equivalent: `lefthook.yml`, `husky`, a `lint` target). Present ⇒ run it (`pre-commit run --all-files`).
