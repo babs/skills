@@ -1,8 +1,8 @@
 ---
 name: smart-commit
 description: Interactive branch, conventional commit, and push with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
-allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(pre-commit *), AskUserQuestion
-version: "1.1.1"
+allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(gh pr checks *), Bash(gh pr merge *), Bash(pre-commit *), AskUserQuestion
+version: "1.2.0"
 ---
 
 ## Task
@@ -53,10 +53,10 @@ Prepare and execute a clean git workflow: branch, commit, and optionally push --
    **A red gate blocks the commit.** Fix the root cause. Committing over a failing lint gate or a failing test needs the user's explicit authorization *in the same turn*, and the reason is surfaced in the step-5 proposal — never waved through, never deferred to "I'll fix it in the next commit". "The failure is unrelated to my diff" is a claim to verify (stash the change, re-run), not a licence to proceed.
 
    When the project is set up for coverage (e.g. `pytest-cov`, `go test -cover`, `nyc`/`c8`), run it too, report the figure, and flag functional code paths in the diff left uncovered.
-5. **Ask for validation**: present the proposed branch name (or current branch if staying), the commit message, and any PR/MR metadata resolved from your agent instructions (see "PR/MR metadata" below). Then ask the user to approve, adjust, or choose scope [1) branch+commit+push / 2) branch+commit+push + open PR/MR / 3) branch+commit+push + open **draft** PR/MR / 4) branch+commit only / 5) adjust]. The create-PR/MR mechanism is resolved from the remote's forge (`git remote get-url origin`): **GitHub** → `gh pr create` (`--draft` for draft); **GitLab** → `git push` with `-o merge_request.create` (`-o merge_request.draft` for draft). This is the approval gate for the chosen scope -- do not re-prompt for the operations covered by that scope in step 6.
+5. **Ask for validation**: present the proposed branch name (or current branch if staying), the commit message, and any PR/MR metadata resolved from your agent instructions (see "PR/MR metadata" below). Then ask the user to approve, adjust, or choose scope [1) branch+commit+push / 2) branch+commit+push + open PR/MR / 3) branch+commit+push + open PR/MR + **auto-merge** / 4) branch+commit+push + open **draft** PR/MR / 5) branch+commit only / 6) adjust]. The create-PR/MR mechanism is resolved from the remote's forge (`git remote get-url origin`): **GitHub** → `gh pr create` (`--draft` for draft); **GitLab** → `git push` with `-o merge_request.create` (`-o merge_request.draft` for draft). Scope 3 (auto-merge) is detailed in "Auto-merge" below — choosing it **authorizes the eventual merge and source-branch deletion** for this run, so no fresh git gate is needed when they later fire. This is the approval gate for the chosen scope -- do not re-prompt for the operations covered by that scope in step 6.
 
-   **Out-of-scope operations require a fresh per-turn gate.** If after step 6 the conversation expands to operations beyond the originally-approved scope -- force-push, `commit --amend`, tag creation, tag push, PR/MR merge, branch deletion, `git reset` -- those each need their own explicit "yes/go/proceed" in the same turn they run, per your global git-mutation rule (if your agent instructions define one). The step-5 gate does not cover them.
-6. **Execute**: only after the user approves in step 5, create the branch if needed (following the step-2 strategy, including the branch-off-mainline stash dance when it applies), stage relevant files, commit, and push if requested. Stage files explicitly by name -- never use `git add -A` or `git add .`. When opening a PR/MR, apply every metadata value resolved in step 5 through the forge's mechanism — GitLab push options (`-o merge_request.assign=<user>`, `-o merge_request.label=<label>`, repeated per value) or GitHub `gh pr create` flags (`--assignee <user>`, `--label <label>`, repeatable).
+   **Out-of-scope operations require a fresh per-turn gate.** If after step 6 the conversation expands to operations beyond the originally-approved scope -- force-push, `commit --amend`, tag creation, tag push, PR/MR merge, branch deletion, `git reset` -- those each need their own explicit "yes/go/proceed" in the same turn they run, per your global git-mutation rule (if your agent instructions define one). The step-5 gate does not cover them. **Exception:** when scope 3 (auto-merge) was chosen, the PR/MR merge and its source-branch deletion *are* the approved scope — they fire without a fresh gate, per the "Auto-merge" section.
+6. **Execute**: only after the user approves in step 5, create the branch if needed (following the step-2 strategy, including the branch-off-mainline stash dance when it applies), stage relevant files, commit, and push if requested. Stage files explicitly by name -- never use `git add -A` or `git add .`. When opening a PR/MR, apply every metadata value resolved in step 5 through the forge's mechanism — GitLab push options (`-o merge_request.assign=<user>`, `-o merge_request.label=<label>`, repeated per value) or GitHub `gh pr create` flags (`--assignee <user>`, `--label <label>`, repeatable). For scope 3, additionally run the forge's auto-merge flow from the "Auto-merge" section.
 
 ## PR/MR metadata
 
@@ -70,3 +70,30 @@ Independently of any matched rule, set title and target/base explicitly when ope
 
 - **target/base** = the resolved default branch (`master`/`main`), not whatever the remote's `HEAD` happens to be — GitLab `-o merge_request.target=<default-branch>`, GitHub `gh pr create --base <default-branch>`.
 - **title** = the commit subject, suffixed with the ticket key in brackets when one is in play (e.g. `feat(auth): add oauth login endpoint [PROJ-123]`) — GitLab `-o merge_request.title=<…>`, GitHub `gh pr create --title <…>`.
+
+## Auto-merge (scope 3)
+
+Assume the forge's *native* server-side auto-merge is **not available** (GitHub's "Allow
+auto-merge" is a per-repo setting, often off). So the merge is armed/driven differently per
+forge, and the source branch is cleaned up on merge. Never merge a branch with a red or still-
+running pipeline — merge only on green.
+
+- **GitLab** — native push options, no polling needed (MWPS is Free-tier, independent of any
+  paid feature). Open the MR with, alongside `-o merge_request.create`:
+  - `-o merge_request.merge_when_pipeline_succeeds` — GitLab merges once the pipeline is green.
+  - `-o merge_request.remove_source_branch` — GitLab deletes the source branch on merge.
+
+- **GitHub** — the agent drives it, since "Allow auto-merge" is assumed off:
+  1. `gh pr create` (non-draft) with the step-5 metadata.
+  2. Determine check state: `gh pr checks <n>`. Three distinct outcomes, do not conflate the
+     last two — `gh pr checks` exits non-zero *both* when a check fails *and* when no checks
+     exist:
+     - **A check failed** → stop, leave the PR open, report the failure, do **not** merge.
+     - **Checks pending** → wait for them: `gh pr checks <n> --watch`, then re-evaluate.
+     - **No checks reported on the repo** → nothing to wait for, proceed straight to merge.
+  3. On all-green (or no checks): `gh pr merge <n> --merge --delete-branch` (default merge
+     method is a merge commit — **never squash**; honour a CLAUDE.md rule if one specifies a
+     different method). `--delete-branch` removes both the remote and the local branch.
+
+  The watch step can outlast the current turn; on resume, re-check status (`gh pr checks <n>`)
+  before merging — the scope-3 authorization from step 5 still stands, no re-gate.

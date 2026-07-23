@@ -2,7 +2,7 @@
 name: dockerfile-init
 description: Generate a production Dockerfile or align an existing one to the standard. Use whenever creating or substantially reworking a Dockerfile — when the user says "write a Dockerfile", "containerize/dockerize this", or asks to align an existing Dockerfile to the standard. Never write a Dockerfile from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.2.0"
+version: "1.3.0"
 ---
 
 ## Context
@@ -48,6 +48,13 @@ Every Dockerfile must have:
 - Only necessary files copied to runtime stage
 - Application port exposed
 
+The `ARG` defaults exist only for local `docker build`. When the CI pipeline uses an
+OCI-build component that auto-injects these values as `--build-arg` + `--label`
+(check the component before assuming), do **not** re-pass them via pipeline-level
+build-arg inputs — drop such blocks when aligning. `VERSION` is typically injected on
+tag builds only: branch images reporting `v0.0.0` is the expected convention, not a
+bug to work around.
+
 ### 3. Language-specific templates
 
 #### Python (FastAPI/uvicorn)
@@ -89,8 +96,10 @@ ENTRYPOINT ["/app"]
 ```
 
 Adapt the build path (`./cmd/app-name`) to match the project's actual entrypoint.
+Keep the `ENV` re-export in Go images too: ldflags bake the values into the binary,
+but the `ENV` makes them readable via `docker inspect` without running it.
 
-**Align checklist**: multi-stage, `CGO_ENABLED=0`, ldflags with build-time vars, distroless nonroot runtime, OCI labels.
+**Align checklist**: multi-stage, `CGO_ENABLED=0`, ldflags with build-time vars, distroless nonroot runtime, OCI labels, builder image Go version consistent with `go.mod` (bump `go.mod` + CI test image + Dockerfile together — never the Dockerfile alone).
 
 #### Node.js
 
@@ -146,7 +155,6 @@ Create or update `.dockerignore` with:
 .github/
 .gitlab-ci.yml
 *.md
-LICENSE
 .env*
 .vscode/
 .idea/

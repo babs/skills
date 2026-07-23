@@ -28,7 +28,14 @@ ENV VERSION="${VERSION}" \
 ```
 
 The `ARG` defaults exist only for local `docker build` — CI passes the real values as
-`--build-arg` (and duplicates them as labels). Do not hand-maintain them.
+`--build-arg` (and duplicates them as labels). Do not hand-maintain them: when the CI
+OCI-build component auto-injects them, drop any pipeline-level build-arg block that
+re-passes the same values. `VERSION` is typically injected on tag builds only — branch
+images reporting `v0.0.0` is the expected convention, not a bug to work around.
+
+The `ENV` re-export applies to all images, Go included: ldflags already bake the values
+into the binary, but the `ENV` keeps them readable via `docker inspect` (or from inside
+the container) without running anything.
 
 
 ## Python build — flat layout (canonical for `python-init` / `dockerfile-init`)
