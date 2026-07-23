@@ -57,10 +57,28 @@ if [ "$TEAMS" -eq 1 ]; then
   html="$(printf '%s' "$html" | teams_transform)"
 fi
 
+# Empty render → every backend below "succeeds" while silently CLEARING the clipboard, and the
+# script still prints "clipboard loaded". Fail loudly instead, before any backend is touched.
+if [ -z "$html" ]; then
+  echo "md2clip: empty document — clipboard left untouched" >&2
+  exit 1
+fi
+
 emit() { printf '%s' "$html"; }
 
 if [ "$(uname -s)" = "Darwin" ]; then
-  emit | hexdump -ve '1/1 "%.2x"' | xargs -I{} osascript -e 'set the clipboard to «data HTML{}»'
+  # Temp file + `read as «class HTML»`. The old hex-through-xargs form was not merely
+  # size-limited: BSD xargs caps -I replacement at 255 bytes (-S default), and hex doubles the
+  # payload, so it broke above ~127 bytes of HTML — i.e. on every real message. The temp file
+  # also keeps the document out of argv, where `ps` would expose it to any local process.
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' EXIT
+  emit > "$tmp"
+  # Path passed as an argv item, never spliced into the script text: mktemp honours TMPDIR, and a
+  # `"` in it would otherwise close the AppleScript literal early (injection).
+  osascript -e 'on run argv' \
+            -e 'set the clipboard to (read (POSIX file (item 1 of argv)) as «class HTML»)' \
+            -e 'end run' "$tmp"
 elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null; then
   emit | wl-copy --type text/html
 elif command -v xclip >/dev/null; then
