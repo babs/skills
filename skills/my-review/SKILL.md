@@ -4,8 +4,8 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # Bash + Write unrestricted: the evidence bar below DEMANDS execution (run the suite, build the
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
-allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.1.1"
+allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion
+version: "1.2.0"
 ---
 
 ## Context
@@ -69,3 +69,23 @@ discouraged?"*
 ## Output
 
 Use the template from [template.md](template.md) to format your review output.
+
+## Fix scope — offer after the review
+
+Once the review is printed, do **not** start fixing. Ask the user how far down the
+severity ladder to go, via `AskUserQuestion` (single-select), so the choice is explicit:
+
+1. **Fix everything** — from the first Critical to the last Low.
+2. **Critical + High + Medium** — leave Lows.
+3. **Critical + High** — leave Medium and Low.
+4. **AI-proposed scope** — you propose the explicit list of findings worth addressing (by
+   ID), cutting across severities on judgement rather than a clean severity band. The user
+   approves the list before you fix it.
+5. **Something else** — user names a subset (specific finding IDs, a single severity, or "none").
+
+Drop any option that would be redundant or empty — when two options would cover the exact
+same findings (e.g. no Lows makes 1 and 2 identical), keep only one. If the review found
+nothing actionable, skip the menu entirely and say so.
+
+Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the
+printed review as the record of what was consciously waived.
