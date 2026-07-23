@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.1.1"
+version: "1.1.2"
 ---
 
 ## Task
@@ -34,7 +34,7 @@ The only legitimate end-of-turn states are:
 
 For each round (max 3):
 
-1. **Assess** — invoke the review skill. Capture every finding. **Do not render the review verbatim and stop.** The review sub-skill returns a structured findings doc; that doc is your input to step 2, not your output to the user. Treat the sub-skill's return like the result of any other tool call — log mentally, then keep going. (You may quote findings inside the triage table in step 3, but only as part of the table.)
+1. **Assess** — invoke the review skill. Capture every finding. The sub-skill prints its report in its own format; that is fine and expected — **what you must not do is stop there.** The report is your input to step 2, not the deliverable of this skill. Treat it like the result of any other tool call, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
 2. **Triage** each finding into exactly one bucket:
    - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path (classify against OWASP Top 10 / OWASP API Security Top 10 and CWE where it applies), documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
    - **Accept with comment** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Leave a code comment capturing *why* it is acceptable.

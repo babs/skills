@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion
-version: "1.2.0"
+version: "1.2.1"
 ---
 
 ## Context
@@ -68,11 +68,21 @@ discouraged?"*
 
 ## Output
 
-Use the template from [template.md](template.md) to format your review output.
+**Read [template.md](template.md) and print the report in exactly that format** — same sections,
+same order, same heading text, same `C1/H1/M1/L1` ID scheme. It is a mandatory format, not a
+suggestion: no freeform prose report, no invented sections, no severity table swapped in, no
+findings listed only inside a tool call. Sections with nothing to report keep their heading and say
+`None.`
+
+**Print that full report as message text before anything else.** Every section, every finding,
+written out as visible assistant text. It is the deliverable; the fix menu is not a substitute for
+it. Do **not** condense it into an `AskUserQuestion` header, options, or descriptions, and do
+**not** call `AskUserQuestion` in place of printing it. Only once the whole report is printed do
+you move to the fix-scope step below.
 
 ## Fix scope — offer after the review
 
-Once the review is printed, do **not** start fixing. Ask the user how far down the
+Once the review is printed **in full**, do **not** start fixing. Ask the user how far down the
 severity ladder to go, via `AskUserQuestion` (single-select), so the choice is explicit:
 
 1. **Fix everything** — from the first Critical to the last Low.
@@ -86,6 +96,11 @@ severity ladder to go, via `AskUserQuestion` (single-select), so the choice is e
 Drop any option that would be redundant or empty — when two options would cover the exact
 same findings (e.g. no Lows makes 1 and 2 identical), keep only one. If the review found
 nothing actionable, skip the menu entirely and say so.
+
+**When invoked from another skill or loop** (`iterative-review`, `ship-feature`,
+`implement-loop`, or any caller whose flow acts on findings by design): still print the full
+report in the mandated format, then **skip the menu and hand back** — the caller already owns
+the fix scope, and asking here stalls its loop. The menu is for direct `/my-review` invocations.
 
 Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the
 printed review as the record of what was consciously waived.
