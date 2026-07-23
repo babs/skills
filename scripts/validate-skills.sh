@@ -58,6 +58,15 @@ if ! python3 "$ROOT/scripts/sync_blocks.py"; then
   rc=1
 fi
 
+# Bundled-script regression checks: a skill shipping an executable must keep its fragile logic
+# under test, or the gate stops gating it. md2clip's Teams HTML transform is pure text — the
+# --selftest path exercises it with no pandoc/clipboard, so it runs headless in CI too.
+md2clip="$ROOT/skills/md-to-html-clipboard/md2clip"
+if [[ -f "$md2clip" ]] && ! bash "$md2clip" --selftest >/dev/null; then
+  echo "ERROR: md2clip --selftest failed — the Teams transform drifted"
+  rc=1
+fi
+
 # 4. Pinned values that live outside any block must at least be UNIFORM across the repo
 #    (the historical drift class: same pin bumped in one file, stale in three).
 # One pattern per DISTINCT image: distroless static (Go) and cc (Rust) are different images,
