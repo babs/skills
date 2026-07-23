@@ -67,6 +67,17 @@ if [[ -f "$md2clip" ]] && ! bash "$md2clip" --selftest >/dev/null; then
   rc=1
 fi
 
+# Known-bad command forms must not survive in prose. A skill's fallback table is copy-paste
+# material: when a bundled script abandons a construct as broken, the doc that still prescribes it
+# is the failure mode, not a cosmetic lag. One entry per retired form, with why it is retired.
+#   «data HTML / hexdump -ve : BSD xargs caps -I replacement at 255 bytes, so the hex-through-xargs
+#   macOS clipboard one-liner silently fails above ~127 bytes of HTML (and leaks the doc via argv).
+while IFS= read -r hit; do
+  echo "ERROR: retired command form referenced in docs (see validate-skills.sh): $hit"
+  rc=1
+  # `|| true`: zero matches is the GOOD case here, but grep exits 1 for it and `set -e` would kill us.
+done < <(grep -rnE '«data HTML|hexdump -ve' "$ROOT/skills" "$ROOT/rules" || true)
+
 # 4. Pinned values that live outside any block must at least be UNIFORM across the repo
 #    (the historical drift class: same pin bumped in one file, stale in three).
 # One pattern per DISTINCT image: distroless static (Go) and cc (Rust) are different images,

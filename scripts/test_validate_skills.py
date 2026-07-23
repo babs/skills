@@ -125,6 +125,27 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("diverges", r.stdout)
 
+    def test_retired_command_form_in_docs_fails(self) -> None:
+        # The exact drift this gate exists for: md2clip dropped the hex-through-xargs macOS
+        # clipboard form (BSD xargs -S caps -I replacement at 255 bytes), but SKILL.md kept
+        # prescribing it as the fallback. Doc rot in a copy-paste table is a shipped bug.
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + "\n| macOS | `pandoc -t html | hexdump -ve '1/1 \"%.2x\"' | xargs ...` |\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("retired command form", r.stdout)
+
+    def test_retired_applescript_data_literal_in_docs_fails(self) -> None:
+        # Second retired form, pinned separately: the alternation must not regress to one branch.
+        (self.root / "rules" / "clip.md").write_text(
+            "# clip\n\nosascript -e 'set the clipboard to «data HTML00»'\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("retired command form", r.stdout)
+
     def test_diverged_pin_fails(self) -> None:
         (self.root / "rules" / "docker.md").write_text(
             "# other\n\nCOPY --from=ghcr.io/astral-sh/uv:0.9.6 /uv /usr/local/bin/uv\n"
