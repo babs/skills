@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# md2clip — render Markdown (stdin or file) to HTML on the clipboard,
+# auto-detecting the clipboard tool (X11 / Wayland / macOS).
+#
+#   md2clip < msg.md
+#   md2clip msg.md
+#   md2clip --teams < msg.md     # Teams form: <p> → a single <br>, lists kept
+#
+set -euo pipefail
+
+TEAMS=0
+SELFTEST=0
+files=()
+for a in "$@"; do
+  case "$a" in
+    --teams) TEAMS=1 ;;
+    --selftest) SELFTEST=1 ;;
+    -h|--help) sed -n '3,12p' "$0"; exit 0 ;;
+    *) files+=("$a") ;;
+  esac
+done
+
+# Teams massage, isolated so --selftest can exercise it without pandoc or a clipboard:
+# <p> gone, </p> → one <br>, then drop the <br> that directly precedes a block whose native
+# margin already spaces it (else double-spacing before the block).
+teams_transform() {
+  sed -e 's#<p>##g' -e 's#</p>#<br>#g' \
+    | perl -0777 -pe 's{<br>\s*(<(?:pre|ul|ol|blockquote|h[1-6])\b)}{$1}g'
+}
+
+# Pure, dependency-free regression check for the fragile transform above (wired into the
+# repo's validate-skills gate). No pandoc, no clipboard — runs anywhere, headless CI included.
+if [ "$SELFTEST" -eq 1 ]; then
+  # Covers every branch: <p>→<br>, an inter-paragraph <br> that must SURVIVE (a1<br>a2), and
+  # the <br> dropped before each block kind exercised here — heading, pre, list.
+  in='<p>intro</p><h2>Sec</h2><p>a1</p><p>a2</p><pre><code>c</code></pre><p>b</p><ul><li>x</li></ul><p>tail</p>'
+  got="$(printf '%s' "$in" | teams_transform)"
+  want='intro<h2>Sec</h2>a1<br>a2<pre><code>c</code></pre>b<ul><li>x</li></ul>tail<br>'
+  if [ "$got" != "$want" ]; then
+    printf 'md2clip --selftest FAIL\n  got:  %s\n  want: %s\n' "$got" "$want" >&2
+    exit 1
+  fi
+  echo "md2clip --selftest ok" >&2
+  exit 0
+fi
+
+command -v pandoc >/dev/null || { echo "md2clip: pandoc required (apt install pandoc)" >&2; exit 1; }
+
+read_src() { if [ "${#files[@]}" -gt 0 ]; then cat "${files[@]}"; else cat; fi; }
+
+# --no-highlight: plain <pre><code> (no coloring spans/anchors) — otherwise Teams
+# collapses the newlines between the spans → code block merged onto one line.
+html="$(read_src | pandoc -f gfm -t html --no-highlight)"
+
+if [ "$TEAMS" -eq 1 ]; then
+  html="$(printf '%s' "$html" | teams_transform)"
+fi
+
+emit() { printf '%s' "$html"; }
+
+if [ "$(uname -s)" = "Darwin" ]; then
+  emit | hexdump -ve '1/1 "%.2x"' | xargs -I{} osascript -e 'set the clipboard to «data HTML{}»'
+elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null; then
+  emit | wl-copy --type text/html
+elif command -v xclip >/dev/null; then
+  emit | xclip -selection clipboard -t text/html -i
+else
+  echo "md2clip: no clipboard tool found (xclip / wl-copy / osascript)" >&2
+  exit 1
+fi
+
+[ "$TEAMS" -eq 1 ] && mode="teams" || mode="html"
+echo "clipboard loaded (${mode})" >&2

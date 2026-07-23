@@ -1,8 +1,8 @@
 ---
 name: md-to-html-clipboard
 description: Render Markdown to HTML and load it into the system clipboard so it pastes as rich-formatted text in apps that don't accept Markdown (Teams, Slack, Outlook, Confluence WYSIWYG, Gmail, …). Use when the user asks to "copy as HTML", "paste this in Teams/Slack/Outlook", "convert markdown for clipboard", or hands over Markdown destined for a non-Markdown UI.
-allowed-tools: Bash(pandoc *), Bash(xclip *), Bash(wl-copy *), Bash(osascript *), Bash(uname *), Bash(command *), Bash(which *)
-version: "1.0.0"
+allowed-tools: Bash(md2clip *), Bash(bash *md2clip*), Bash(cat *), Bash(pandoc *), Bash(xclip *), Bash(wl-copy *), Bash(osascript *), Bash(uname *), Bash(command *), Bash(which *)
+version: "1.2.0"
 ---
 
 ## Task
@@ -13,21 +13,42 @@ The user's Markdown is the source of truth — do not rewrite, summarize, or "fi
 
 ## Steps
 
-1. **Capture the Markdown source.** Either inline content from the request, or a file path. Use a heredoc with a quoted delimiter (`<<'EOF'`) so backticks, `$`, and other shell metacharacters are preserved verbatim.
+Prefer the **bundled `md2clip` wrapper** — it auto-detects the clipboard backend
+(X11 `xclip` / Wayland `wl-copy` / macOS `osascript`) and renders GFM → HTML, so there is
+no per-platform pipeline to remember.
 
-2. **Detect the platform** with `uname -s` and pick the pipeline:
+1. **Capture the Markdown source** (inline from the request, or a file path). For inline, use a
+   heredoc with a quoted delimiter (`<<'EOF'`) so backticks, `$`, etc. are preserved verbatim.
 
-   | Platform | Command |
-   |---|---|
-   | Linux + X11 (`xclip` available) | `pandoc -f gfm -t html \| xclip -selection clipboard -t text/html -i` |
-   | Linux + Wayland (`wl-copy` available, no `xclip`) | `pandoc -f gfm -t html \| wl-copy --type text/html` |
-   | macOS (`uname -s` = `Darwin`) | `pandoc -f gfm -t html \| hexdump -ve '1/1 "%.2x"' \| xargs -I{} osascript -e 'set the clipboard to «data HTML{}»'` |
+2. **Run the wrapper** (resolve its dir from this skill's path):
+   ```bash
+   cat <<'EOF' | bash <skill-dir>/md2clip
+   ...markdown...
+   EOF
+   # or: bash <skill-dir>/md2clip file.md
+   ```
+   It's also symlinked to `~/.local/bin/md2clip` for direct CLI use. It errors (no silent
+   plain-text fallback) if `pandoc` or a clipboard tool is missing.
 
-   Verify `pandoc` and the clipboard helper exist before running. If missing, give the install hint (`apt install pandoc xclip`, `brew install pandoc`, …) and stop — do **not** silently fall back to plain text.
+3. **Microsoft Teams → add `--teams`.** Teams collapses `<p>` spacing. `--teams` turns each
+   paragraph into a **single `<br>`** (NOT `<br><br>` = too much space) and keeps real
+   `<ul>/<li>` lists untouched:
+   ```bash
+   cat <<'EOF' | bash <skill-dir>/md2clip --teams
+   ...markdown...
+   EOF
+   ```
 
-3. **Run the pipeline.** Pipe the Markdown into `pandoc -f gfm -t html`, then into the platform clipboard tool. Do not echo the rendered HTML back unless the user asked — the artifact lives on the clipboard.
+4. **Confirm.** One short line: *"Clipboard loaded — paste in <app / 'rich-text app'>."* Do not
+   echo the HTML back unless asked — the artifact lives on the clipboard.
 
-4. **Confirm.** One short line: *"Clipboard loaded — paste in <app the user mentioned, or 'rich-text app'>."*
+**Fallback (no wrapper available)** — pipe manually by platform:
+
+| Platform | Command |
+|---|---|
+| Linux + X11 | `pandoc -f gfm -t html \| xclip -selection clipboard -t text/html -i` |
+| Linux + Wayland | `pandoc -f gfm -t html \| wl-copy --type text/html` |
+| macOS | `pandoc -f gfm -t html \| hexdump -ve '1/1 "%.2x"' \| xargs -I{} osascript -e 'set the clipboard to «data HTML{}»'` |
 
 ## Notes
 
@@ -42,7 +63,7 @@ The user's Markdown is the source of truth — do not rewrite, summarize, or "fi
 User: *"convert this for Teams: # Hello\n- item 1\n- item 2"*
 
 ```bash
-cat <<'EOF' | pandoc -f gfm -t html | xclip -selection clipboard -t text/html -i
+cat <<'EOF' | bash <skill-dir>/md2clip --teams
 # Hello
 - item 1
 - item 2
