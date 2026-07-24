@@ -129,3 +129,87 @@ CMD ["./run.sh"]
 ```
 
 (The bootstrap/pip rationale is the same as in the flat-layout stage above.)
+
+## Go build (canonical for `go-init` / `dockerfile-init`)
+
+Static binary, distroless runtime. The skills point here; do not carry copies.
+
+`PKG` = entry-point package: `.` for a root `main.go`, `./cmd/<binary>` otherwise. Set it via
+`--build-arg`, never by editing the `go build` line — `make docker-build` forwards the Makefile's `PKG`.
+
+```dockerfile
+FROM golang:1.26-bookworm AS builder
+WORKDIR /src
+# go.sum* — glob, not a typo: a stdlib-only module has no go.sum and the build would fail hard.
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+ARG VERSION="v0.0.0"
+ARG COMMIT_HASH="00000000-dirty"
+ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
+ARG PROJECT_URL="project-name"
+ARG PKG="."
+# Builder=$(go version) must be evaluated HERE, not passed as a build arg: an arg reports the
+# host's toolchain, not this image's.
+RUN CGO_ENABLED=0 go build -ldflags="-s -w \
+    -X 'main.Version=${VERSION}' \
+    -X 'main.CommitHash=${COMMIT_HASH}' \
+    -X 'main.BuildTimestamp=${BUILD_TIMESTAMP}' \
+    -X 'main.Builder=$(go version)' \
+    -X 'main.ProjectURL=${PROJECT_URL}'" \
+    -o /app "${PKG}"
+
+FROM gcr.io/distroless/static-debian12:nonroot
+
+ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
+ARG COMMIT_HASH="00000000-dirty"
+ARG PROJECT_URL="project-name"
+ARG VERSION="v0.0.0"
+
+LABEL org.opencontainers.image.source=${PROJECT_URL}
+LABEL org.opencontainers.image.created=${BUILD_TIMESTAMP}
+LABEL org.opencontainers.image.version=${VERSION}
+LABEL org.opencontainers.image.revision=${COMMIT_HASH}
+
+ENV VERSION="${VERSION}" \
+    COMMIT_HASH="${COMMIT_HASH}" \
+    BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
+    PROJECT_URL="${PROJECT_URL}"
+
+COPY --from=builder /app /app
+# 8080 app + 9090 metrics (dual servers, rules/golang.md). No metrics server → 8080 only.
+EXPOSE 8080 9090
+ENTRYPOINT ["/app"]
+```
+
+`:nonroot` already runs as UID 65532 — no `useradd`, and there is no shell to add one with.
+
+## .dockerignore (canonical for `go-init` / `dockerfile-init`)
+
+One list, so two skills over the same repo cannot each rewrite the other's file. The skills point
+here; do not carry copies. `python-init` / `fullstack-init` need none — their images copy selectively,
+so there is no `COPY . .`.
+
+```
+.git/
+.github/
+.gitlab-ci.yml
+*.md
+.env*
+.vscode/
+.idea/
+Dockerfile
+.dockerignore
+```
+
+Plus the language's build output — regenerated inside the image, so it only bloats the context:
+
+| Language | Add |
+|---|---|
+| Go | `bin/` |
+| Python | `__pycache__/`, `.venv/` |
+| Node.js | `node_modules/`, `dist/` |
+| Rust | `target/` |
+
+`.env*` is about secrets, not size: swept up by `COPY . .` it lands in an image layer, readable by
+anyone who can pull it.
