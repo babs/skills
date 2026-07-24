@@ -4,8 +4,8 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # Bash + Write unrestricted: the evidence bar below DEMANDS execution (run the suite, build the
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
-allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion
-version: "1.2.1"
+allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
+version: "1.2.2"
 ---
 
 ## Context
@@ -76,14 +76,14 @@ findings listed only inside a tool call. Sections with nothing to report keep th
 
 **Print that full report as message text before anything else.** Every section, every finding,
 written out as visible assistant text. It is the deliverable; the fix menu is not a substitute for
-it. Do **not** condense it into an `AskUserQuestion` header, options, or descriptions, and do
-**not** call `AskUserQuestion` in place of printing it. Only once the whole report is printed do
-you move to the fix-scope step below.
+it. Do **not** condense it into a menu header, options, or descriptions in place of printing it.
+Only once the whole report is printed do you move to the fix-scope step below.
 
 ## Fix scope — offer after the review
 
-Once the review is printed **in full**, do **not** start fixing. Ask the user how far down the
-severity ladder to go, via `AskUserQuestion` (single-select), so the choice is explicit:
+Once the review is printed **in full**, do **not** start fixing. In the same message, right after
+the report, ask the user how far down the severity ladder to go — as a plain-text numbered list, so
+the choice is explicit and the report stays visible:
 
 1. **Fix everything** — from the first Critical to the last Low.
 2. **Critical + High + Medium** — leave Lows.
