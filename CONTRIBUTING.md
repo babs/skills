@@ -99,8 +99,19 @@ instructions — the same rule `rules/agents-md.md` gives you.
    `${CLAUDE_PLUGIN_ROOT}/rules/<topic>.md`. Never brace-expand (`rules/{a,b}.md`) —
    `scripts/validate-skills.sh` cannot see those, so a typo'd rule would pass CI silently.
    A rule may also point at a sibling rule with a bare `rules/<topic>.md` path (e.g.
-   `python.md` → `rules/design.md`); these rule→rule pointers are not gate-checked, so
-   double-check the target exists.
+   `python.md` → `rules/design.md`); both forms are gate-checked for existence.
+
+   **To point at a *section*, one form only** — the file reference, then the heading in
+   parentheses and double quotes:
+
+   ```markdown
+   Copy the template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Go build") verbatim.
+   ```
+
+   Matched as a substring of the target's markdown headings (so the heading may carry a trailing
+   `(canonical for …)`; comments inside ``` fences do not count), and it must match **exactly
+   one**. Note: a `("…")` parenthetical after a rule reference is *always* read as a section
+   pointer — don't use that shape for ordinary prose.
 3. If a skill must *show* the rule's code, wrap it in a `<!-- block: -->` and include it (above).
 4. `bash scripts/validate-skills.sh` must pass.
 
@@ -131,7 +142,8 @@ claude --plugin-dir .
 claude plugin validate .
 
 # What CI runs — the local hook invokes scripts/validate-skills.sh (frontmatter, rule
-# references, block drift incl. both gates' own unit tests, pin uniformity)
+# references AND the sections they point at, block drift incl. both gates' own unit tests,
+# pin uniformity)
 pre-commit run --all-files
 ```
 

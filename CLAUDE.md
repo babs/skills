@@ -17,6 +17,19 @@ ones most easily got wrong — they override any habit or harness default.
 - Per-skill `version:` frontmatter is a *separate* thing — bump it in the feature PR that changes that
   skill. Only the plugin-level `plugin.json` version is tag-owned.
 
+## Rules and skills are read by models — write for them
+
+`rules/*.md` and `skills/*/SKILL.md` are executed, not admired. Terse directives, no padding.
+
+- State the constraint, not the case for it. One clause, not a paragraph.
+- Keep only what a model cannot derive: silent failure modes (`-X` against the import path is
+  ignored), deliberate oddities (`go.sum*` is a glob on purpose), ordering that matters.
+- Cut justification of non-decisions (gofmt uses tabs), rhetorical framing ("two things worth
+  knowing", "what actually costs you"), and review evidence (measured versions, anecdotes) — that
+  belongs in the PR, not in the instruction the agent follows.
+- Comments inside templates follow the same bar: WHY only, in the shortest form that still states
+  the reason — one line where the reason fits in one.
+
 ## Scope — do only what was asked
 
 - No self-initiated version bumps, tags, releases, or extra git mutations. Every git state change

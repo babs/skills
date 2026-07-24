@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Guardrails that `claude plugin validate` does NOT cover:
 #   1. every skills/*/SKILL.md has non-empty `name:`, `description:` and `allowed-tools:` frontmatter,
-#   2. every ${CLAUDE_PLUGIN_ROOT}/rules/<file> referenced by a skill actually exists,
+#   2. every ${CLAUDE_PLUGIN_ROOT}/rules/<file> referenced by a skill actually exists — and, where the
+#      reference names a section, that heading still exists in it,
 #   3. shared rule/skill blocks have not drifted (scripts/sync_blocks.py, incl. its own unit tests),
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image).
 # Exit 0 = clean, 1 = violations found.
@@ -25,16 +26,58 @@ while IFS= read -r -d '' skill; do
   done
 done < <(find "$ROOT/skills" -name SKILL.md -print0)
 
-# 2. Referenced rule files must exist.
+# Markdown headings only. A `# comment` inside a ``` fence is NOT one — otherwise "# Go build stage"
+# in a Dockerfile example satisfies check 2b for a heading that was renamed away. Hash-counting
+# cannot substitute: a shell comment and a single-hash H1 are both `# text`.
+md_headings() { awk '/^```/ { fence = !fence; next } !fence && /^#/' "$1"; }
+
+# 2. Referenced rule files must exist — both the skill form (${CLAUDE_PLUGIN_ROOT}/rules/<f>) and the
+#    bare rule→rule form (rules/<f>), so a sibling pointer cannot rot either.
 while IFS= read -r ref; do
   if [[ ! -f "$ROOT/rules/$ref" ]]; then
-    echo "ERROR: skill references \${CLAUDE_PLUGIN_ROOT}/rules/${ref}, but rules/${ref} is missing"
+    echo "ERROR: rules/${ref} is referenced but does not exist"
     rc=1
   fi
 #    Anchored on `.md`: without it the character class swallows a trailing sentence period
 #    ("see rules/python.md." would look up "python.md." and false-fail).
-done < <(grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/rules/[A-Za-z0-9._-]+\.md' "$ROOT/skills" \
-           | sed 's#.*/rules/##' | sort -u)
+done < <({ grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/rules/[A-Za-z0-9._-]+\.md' "$ROOT/skills" || true
+           grep -rhoE 'rules/[A-Za-z0-9._-]+\.md' "$ROOT/rules" || true; } \
+           | sed 's#.*/rules/##; s#^rules/##' | sort -u)
+
+# 2b. Referenced rule SECTIONS must exist too — `rules/<file>.md` ("<Heading>").
+#    A skill that POINTS at a heading instead of carrying a copy is only as good as that heading:
+#    rename the heading and the pointer silently aims at nothing. Check 2 above only proves the
+#    file exists, so before this check a rename of "## Go build" left two skills dangling and this
+#    script still exited 0. Substring match, because headings carry a trailing "(canonical for …)"
+#    the pointer omits; -F so punctuation in a heading stays literal.
+while IFS=$'\t' read -r ref section; do
+  [[ -f "$ROOT/rules/$ref" ]] || continue   # missing file already reported by check 2
+  # `|| true`: grep -c exits 1 on zero matches, which under `set -e` would abort instead of
+  # reporting. It still prints the count, so n is always a number.
+  n=$(md_headings "$ROOT/rules/$ref" | grep -cF -- "$section" || true)
+  if (( n == 0 )); then
+    echo "ERROR: skill points at rules/${ref} section \"${section}\", but no heading there matches"
+    rc=1
+  elif (( n > 1 )); then
+    echo "ERROR: skill points at rules/${ref} section \"${section}\", which matches ${n} headings" \
+         "— make the pointer unambiguous"
+    rc=1
+  fi
+done < <(grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/rules/[A-Za-z0-9._-]+\.md`? \("[^"]+"\)' "$ROOT/skills" \
+           | sed -E 's#.*/rules/([A-Za-z0-9._-]+\.md)`? \("(.*)"\)#\1\t\2#' | sort -u)
+
+# 2c. The Go build-time var SET must agree between rules/golang.md and the go-init template.
+#    Not a sync_blocks shared block: the skill's copy sits inside main.go's ```go fence, where
+#    `<!-- include: -->` markers would land in the generated .go file. So compare identifier sets —
+#    agreement, not byte-identity. This is the drift that lost `Builder` once.
+go_build_vars() { awk '/^[[:space:]]*var \(/ { inb=1; next } inb && /^[[:space:]]*\)/ { exit } inb { print $1 }' "$1" | sort; }
+if ! diff <(go_build_vars "$ROOT/rules/golang.md") \
+          <(go_build_vars "$ROOT/skills/go-init/SKILL.md") >/dev/null; then
+  echo "ERROR: Go build-time var set differs between rules/golang.md and skills/go-init/SKILL.md:"
+  diff <(go_build_vars "$ROOT/rules/golang.md") \
+       <(go_build_vars "$ROOT/skills/go-init/SKILL.md") | sed 's/^/  /'
+  rc=1
+fi
 
 # 3. Shared blocks must not have drifted (the canonical block wins). Run unconditionally:
 #    a missing rule reference must not mask a drift report — surface both in one pass.
