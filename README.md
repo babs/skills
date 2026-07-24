@@ -132,6 +132,10 @@ plugin install** (the Claude Code path above), where the whole repo — includin
 that skill's directory and **won't** carry the sibling `rules/`, so those four
 skills are best used through the Claude plugin install.
 
+For `go-init` and `dockerfile-init` it is a hard dependency: their Dockerfile and
+`.dockerignore` templates live **only** in `rules/dockerfile.md` (one copy, so two skills
+cannot emit divergent ones), so a standalone install skips those files entirely.
+
 `rules/` also holds standalone reference standards (currently `github-actions.md`)
 not wired to any skill — kept as published coding standards.
 

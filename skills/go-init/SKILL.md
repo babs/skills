@@ -2,7 +2,7 @@
 name: go-init
 description: Initialize a new Go HTTP service or align an existing one to the standard. Use when starting any new Go service or project — when the user says "new Go service", "bootstrap/init a Go app", or asks to align an existing Go service to the standard. Never scaffold a Go service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.0.2"
+version: "1.1.0"
 ---
 
 ## Context
@@ -18,11 +18,22 @@ The user may provide a Go module path as argument (e.g. `github.com/org/project-
 - **No `go.mod` in current dir**: new project — create everything from scratch
 - **Existing project detected**: audit and align — check each file below against the standard, report gaps, and fix them
 
+Then pick the layout — **two independent axes** (see `${CLAUDE_PLUGIN_ROOT}/rules/golang.md`):
+
+- **Entry point.** One binary (a long-running service counts as one) → `main.go` at the **repo root**. Several → `cmd/<binary>/main.go`. Never create `cmd/` for a single entry point.
+- **Internal structure.** `pkg/<domain>/` only when a domain earns separate testing, not by default.
+
+The axes do not interact: root `main.go` + `pkg/` is normal; `cmd/` is never a prerequisite for `pkg/`.
+
+One knob encodes the choice: `PKG` in the Makefile, forwarded to the Dockerfile's `ARG PKG` by `make docker-build`. No other file below repeats it.
+
 ### 2. Audit / create each file
 
 For **new projects**, create all files. For **existing projects**, check each item and only add/update what's missing or non-compliant. Never overwrite existing application logic — only align config and tooling.
 
-#### cmd/$APP_NAME/main.go (new projects only)
+#### main.go (new projects only)
+
+At the repo root for a single binary, or `cmd/$APP_NAME/main.go` when there are several.
 
 ```go
 package main
@@ -46,6 +57,7 @@ var (
 	Version        = "v0.0.0"
 	CommitHash     = "0000000"
 	BuildTimestamp = "1970-01-01T00:00:00"
+	Builder        = "unknown"
 	ProjectURL     = "unknown"
 )
 
@@ -89,6 +101,7 @@ func main() {
 		zap.String("version", Version),
 		zap.String("commit_hash", CommitHash),
 		zap.String("build_timestamp", BuildTimestamp),
+		zap.String("builder", Builder),
 		zap.String("project_url", ProjectURL),
 	)
 
@@ -151,7 +164,8 @@ func main() {
 ```
 
 **Align**: don't overwrite existing application code. Check that:
-- Build-time vars (`Version`, `CommitHash`, `BuildTimestamp`, `ProjectURL`) exist
+- All five build-time vars (`Version`, `CommitHash`, `BuildTimestamp`, `Builder`, `ProjectURL`) exist
+  and are in the startup log
 - Logging uses `zap` with TTY auto-detection (`golang.org/x/term`)
 - Timestamp config (`TimeKey`, `EncodeTime = ISO8601TimeEncoder`) applies to **both** console and JSON modes
 - `LOG_FORMAT` env var is supported (`auto`/`console`/`json`)
@@ -162,7 +176,9 @@ func main() {
 
 Report gaps.
 
-#### cmd/$APP_NAME/main_test.go (new projects only)
+#### main_test.go (new projects only)
+
+Next to `main.go`, wherever the entry-point axis put it.
 
 ```go
 package main
@@ -200,20 +216,28 @@ func TestHealthEndpoint(t *testing.T) {
 ```makefile
 APP_NAME    := project-name
 MODULE      := module-path
+# Entry-point axis: "." for a root main.go, "./cmd/<binary>" when the module ships several.
+# Passed to docker build too, so the image and the local binary share one entry point.
+PKG         := .
 VERSION     ?= v0.0.0
 COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "0000000")
 BUILD_TS    := $(shell date -Iseconds)
+# Which Go built it. Fallback, or a $(shell) failure injects "" — reads as a broken log.
+BUILDER     := $(shell go version 2>/dev/null || echo "unknown")
 PROJECT_URL ?= $(MODULE)
+# Always `main.`, never the import path — see rules/golang.md for why the other spelling
+# silently does nothing.
 LDFLAGS     := -s -w \
-  -X '$(MODULE)/cmd/$(APP_NAME).Version=$(VERSION)' \
-  -X '$(MODULE)/cmd/$(APP_NAME).CommitHash=$(COMMIT_HASH)' \
-  -X '$(MODULE)/cmd/$(APP_NAME).BuildTimestamp=$(BUILD_TS)' \
-  -X '$(MODULE)/cmd/$(APP_NAME).ProjectURL=$(PROJECT_URL)'
+  -X 'main.Version=$(VERSION)' \
+  -X 'main.CommitHash=$(COMMIT_HASH)' \
+  -X 'main.BuildTimestamp=$(BUILD_TS)' \
+  -X 'main.Builder=$(BUILDER)' \
+  -X 'main.ProjectURL=$(PROJECT_URL)'
 
 .PHONY: build run test lint clean docker-build docker-run
 
 build:
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) ./cmd/$(APP_NAME)
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) $(PKG)
 
 run: build
 	./bin/$(APP_NAME)
@@ -233,13 +257,17 @@ docker-build:
 	  --build-arg COMMIT_HASH="$(COMMIT_HASH)" \
 	  --build-arg BUILD_TIMESTAMP="$(BUILD_TS)" \
 	  --build-arg PROJECT_URL="$(PROJECT_URL)" \
+	  --build-arg PKG="$(PKG)" \
 	  -t $(APP_NAME):local .
 
 docker-run:
-	docker run --rm -p 8080:8080 $(APP_NAME):local
+	# Metrics bound to loopback: /metrics is for you, not for the coffee-shop LAN.
+	docker run --rm -p 8080:8080 -p 127.0.0.1:9090:9090 $(APP_NAME):local
 ```
 
-**Align**: if Makefile exists, ensure `build`, `test`, `lint` targets exist and `LDFLAGS` inject build-time vars. Add missing targets.
+Builds **one** binary. Several → one `PKG`/`build`/`-o bin/<name>` triplet each, or a `foreach` over a `BINARIES` list.
+
+**Align**: ensure `build`, `test`, `lint` exist, `LDFLAGS` inject **against `main.`** (`rules/golang.md`), and `docker-build` forwards `PKG`.
 
 #### .golangci.yml
 
@@ -264,41 +292,18 @@ linters-settings:
 
 #### Dockerfile
 
-```dockerfile
-FROM golang:1.26-bookworm AS builder
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-ARG VERSION="v0.0.0"
-ARG COMMIT_HASH="00000000-dirty"
-ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
-ARG PROJECT_URL="project-name"
-RUN CGO_ENABLED=0 go build -ldflags="-s -w \
-    -X 'main.Version=${VERSION}' \
-    -X 'main.CommitHash=${COMMIT_HASH}' \
-    -X 'main.BuildTimestamp=${BUILD_TIMESTAMP}' \
-    -X 'main.ProjectURL=${PROJECT_URL}'" \
-    -o /app ./cmd/project-name
+Copy the **Go build** template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Go build") verbatim. Leave `ARG PKG="."` as written — the Makefile passes the entry point at build time.
 
-FROM gcr.io/distroless/static-debian12:nonroot
+**Align**: check multi-stage, OCI labels/ARGs **and the `ENV` re-export**, ldflags against `main.` (not the import path), `ARG PKG` wired to the build target, distroless/nonroot, `CGO_ENABLED=0`.
 
-ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
-ARG COMMIT_HASH="00000000-dirty"
-ARG PROJECT_URL="project-name"
-ARG VERSION="v0.0.0"
+`main.Builder` comes from `$(go version)` **inside the builder stage**, never a `--build-arg` — an arg bakes the host's toolchain into an image built by a different one (a wrong `Builder` is worse than `unknown`).
 
-LABEL org.opencontainers.image.source=${PROJECT_URL}
-LABEL org.opencontainers.image.created=${BUILD_TIMESTAMP}
-LABEL org.opencontainers.image.version=${VERSION}
-LABEL org.opencontainers.image.revision=${COMMIT_HASH}
+#### .dockerignore
 
-COPY --from=builder /app /app
-EXPOSE 8080 9090
-ENTRYPOINT ["/app"]
-```
+Copy the canonical list from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` (".dockerignore"), plus the Go
+row `bin/` — `make build` writes there and `COPY . .` would ship it into every build context.
 
-**Align**: if Dockerfile exists, check for: multi-stage build, OCI labels/ARGs, ldflags injection, distroless/nonroot runtime, `CGO_ENABLED=0`. Report what's missing and fix.
+**Align**: merge missing entries into existing `.dockerignore`.
 
 #### .gitignore
 
