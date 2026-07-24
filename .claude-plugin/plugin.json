@@ -1,7 +1,7 @@
 {
   "name": "babs",
   "description": "Daily-driver toolkit: spec-driven feature flow (spec → ship → review → commit), project init standards (FastAPI+PostgreSQL+React full-stack, Python, Go, Dockerfile), review workflows (iterative, swarm, full-project), conventional-commit flow, sharing utilities, and an optional quota-aware status line.",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "author": {
     "name": "babs",
     "email": "damien-claudeai@degois.info"
