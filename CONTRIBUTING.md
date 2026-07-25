@@ -101,19 +101,33 @@ instructions — the same rule `rules/agents-md.md` gives you.
    A rule may also point at a sibling rule with a bare `rules/<topic>.md` path (e.g.
    `python.md` → `rules/design.md`); both forms are gate-checked for existence.
 
-   **To point at a *section*, one form only** — the file reference, then the heading in
-   parentheses and double quotes:
+   **To point at a *section*, one form only** — the path, then the heading in parentheses and
+   double quotes. Works for a rule or for another skill:
 
    ```markdown
    Copy the template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Go build") verbatim.
+   The canonical evidence bar lives in `skills/my-review/SKILL.md` ("The evidence bar").
    ```
 
-   Matched as a substring of the target's markdown headings (so the heading may carry a trailing
-   `(canonical for …)`; comments inside ``` fences do not count), and it must match **exactly
-   one**. Note: a `("…")` parenthetical after a rule reference is *always* read as a section
-   pointer — don't use that shape for ordinary prose.
+   Matched as a substring of the target's markdown headings — so the heading may carry a trailing
+   `(canonical for …)` — and it must match **exactly one**. Neither side counts `#` lines inside
+   YAML frontmatter or inside ``` / ~~~ fences, so a pointer shown *as an example* in a fence is
+   documentation, not a live pointer. The gate keys on the *path*: a `("…")` parenthetical is only a
+   pointer when a `rules/<file>.md` or `skills/<name>/<file>.md` path precedes it, so ordinary prose
+   like ``` `zap`'s "sugared" logger ``` is not checked. Line wraps between the path and the
+   parenthetical are tolerated, and curly quotes are normalised.
+
+   Sources scanned: `skills/**.md`, `rules/**.md`, and this file. Bare references (no section) are
+   existence-checked too, for both `rules/<file>.md` and `skills/<name>/SKILL.md`.
 3. If a skill must *show* the rule's code, wrap it in a `<!-- block: -->` and include it (above).
 4. `bash scripts/validate-skills.sh` must pass.
+
+**One pairing is gated by identifier set rather than by block or pointer**: the Go build-time var
+block in `rules/golang.md` and the copy inside `go-init`'s `main.go` template must declare the *same
+identifiers* (check 2c). They cannot be a shared block — the skill's copy lives inside a ```go fence,
+where `<!-- include: -->` markers would end up in the generated `.go` file — so the gate compares
+names, not bytes: indentation and default values may differ, the set may not. Restructuring either
+`var ( … )` block away fails the gate rather than silently disabling it.
 
 ## Release
 
@@ -141,9 +155,10 @@ claude --plugin-dir .
 # Validate the marketplace + plugin manifests (offline, no API key)
 claude plugin validate .
 
-# What CI runs — the local hook invokes scripts/validate-skills.sh (frontmatter, rule
-# references AND the sections they point at, block drift incl. both gates' own unit tests,
-# pin uniformity)
+# What CI runs — the local hook invokes scripts/validate-skills.sh: frontmatter; rule and skill
+# references AND the sections they point at; the Go build-var set agreeing between rules/golang.md
+# and go-init; block drift incl. both gates' own unit tests; pin uniformity; retired md2clip command
+# forms plus md2clip --selftest
 pre-commit run --all-files
 ```
 

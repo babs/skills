@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent
-version: "1.2.0"
+version: "1.3.0"
 ---
 
 # Swarm Review
@@ -60,7 +60,7 @@ For every agent, the prompt MUST include:
 | **global-coherence** | *"Assume the repo already has the utilities and patterns this needs. Did the author find them, or build a parallel one?"* | Architectural fit, naming/module conventions consistent with the rest of the repo, no parallel implementations of existing utilities, layering respected, public surface kept small |
 | **tests-coverage** | *"Assume someone refactors this next sprint without reading the tests. Will the tests catch the breakage?"* | Are new code paths tested? Are edge cases covered? Test quality (no over-mocking, deterministic, fast), missing regression tests for the bug being fixed, coverage of error paths |
 
-The per-agent **Execution mandate** above IS the evidence bar (canonical: `my-review`'s "The evidence bar" section) — it reaches the sub-agents through their prompts; the consolidator itself only merges and never files unverified findings of its own.
+The per-agent **Execution mandate** above IS the evidence bar (canonical: `skills/my-review/SKILL.md` ("The evidence bar")) — it reaches the sub-agents through their prompts; the consolidator itself only merges and never files unverified findings of its own.
 
 ## Consolidate
 
@@ -86,6 +86,30 @@ whose flow by design acts on findings):
   the user has not seen.
 - When invoked from another skill or loop, the report is still surfaced in full before anything acts on
   it; the caller's own flow then decides what happens next.
+
+## Fix scope — offer after the report
+
+Once the consolidated report is printed **in full**, ask how far down the severity ladder to go — as a
+plain-text numbered list, in the same message, so the choice is explicit and the report stays visible:
+
+1. **Fix everything** — from the first Critical to the last Low.
+2. **Critical + High + Medium** — leave Lows.
+3. **Critical + High** — leave Medium and Low.
+4. **AI-proposed scope** — you propose the explicit list of findings worth addressing (by ID), cutting
+   across severities on judgement rather than a clean severity band. The user approves before you fix.
+5. **Something else** — user names a subset (specific finding IDs, a single severity, or "none").
+
+Drop any option that would be redundant or empty — when two would cover the exact same findings (e.g.
+no Lows makes 1 and 2 identical), keep only one. If nothing actionable was found, skip the menu and say
+so. The complexity index is useful here: a `cx:L` Medium may be worth deferring while a `cx:S` Low is
+free, so option 4 should weigh cost against severity rather than following the band.
+
+**When invoked from another skill or loop** (`iterative-review`, `ship-feature`, `implement-loop`, or
+any caller whose flow acts on findings by design): print the full report, then **skip the menu and hand
+back** — the caller owns the fix scope, and asking here stalls its loop.
+
+Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the printed
+report as the record of what was consciously waived.
 
 ## Output discipline
 

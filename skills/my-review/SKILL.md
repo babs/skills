@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.2.2"
+version: "1.2.4"
 ---
 
 ## Context
@@ -68,16 +68,12 @@ discouraged?"*
 
 ## Output
 
-**Read [template.md](template.md) and print the report in exactly that format** — same sections,
-same order, same heading text, same `C1/H1/M1/L1` ID scheme. It is a mandatory format, not a
-suggestion: no freeform prose report, no invented sections, no severity table swapped in, no
-findings listed only inside a tool call. Sections with nothing to report keep their heading and say
-`None.`
+**Read [template.md](template.md) and print the report in exactly that format** — same sections, same
+order, same heading text, same `C1/H1/M1/L1` IDs. Sections with nothing to report keep their heading
+and say `None.`
 
-**Print that full report as message text before anything else.** Every section, every finding,
-written out as visible assistant text. It is the deliverable; the fix menu is not a substitute for
-it. Do **not** condense it into a menu header, options, or descriptions in place of printing it.
-Only once the whole report is printed do you move to the fix-scope step below.
+**The report is the deliverable: print it in full, as message text, before anything else** — never only
+inside a tool call, never condensed into the menu. Then move to the fix-scope step below.
 
 ## Fix scope — offer after the review
 

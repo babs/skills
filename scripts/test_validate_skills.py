@@ -155,6 +155,37 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn(".dockerignore", r.stdout)
 
+    # --- Fence/frontmatter policy: one test per row of the table in validate-skills.sh. The policy
+    # --- deliberately differs per consumer; these three lock it so it cannot silently flip again.
+
+    def test_policy_row1_existence_includes_fenced_references(self) -> None:
+        # check 2 | does this path exist? | fences INCLUDED — a typo is a typo inside a code example.
+        (self.root / "skills" / "demo" / "SKILL.md").write_text(
+            GOOD_SKILL + "\n```dockerfile\n# see rules/ghost.md for the rationale\n```\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("rules/ghost.md", r.stdout)
+
+    def test_policy_row2_enforcement_excludes_fenced_pointers(self) -> None:
+        # 2b source | is this a pointer to enforce? | fences excluded — a fenced pointer documents
+        # the form; it does not assert the heading exists.
+        self._add_skill("caller", '\n```markdown\nCopy `rules/python.md` ("Ghost Heading") verbatim.\n```\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_policy_row3_headings_exclude_fences_and_frontmatter(self) -> None:
+        # 2b target | is this line a heading? | fences AND frontmatter excluded.
+        (self.root / "skills" / "other").mkdir(parents=True)
+        (self.root / "skills" / "other" / "SKILL.md").write_text(
+            "---\nname: other\n# Ghost Heading in frontmatter\ndescription: d\nallowed-tools: Read\n---\n\n"
+            "```markdown\n# Ghost Heading in a fence\n```\n\n## Real Heading\n\nbody\n"
+        )
+        self._add_skill("caller", '\nSee `skills/other/SKILL.md` ("Ghost Heading").\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("no heading there matches", r.stdout)
+
     def test_section_in_code_fence_does_not_satisfy_pointer(self) -> None:
         # The bypass this filter exists for: the heading was renamed away, but a comment inside a
         # fenced example still contains the string. Matching any `#` line would pass a dangling
@@ -190,6 +221,122 @@ class ValidateSkillsTest(unittest.TestCase):
         r = run(self.root)
         self.assertEqual(r.returncode, 1)
         self.assertIn("ghost.md", r.stdout)
+
+    def _add_skill(self, name: str, body: str) -> None:
+        (self.root / "skills" / name).mkdir(parents=True, exist_ok=True)
+        (self.root / "skills" / name / "SKILL.md").write_text(
+            GOOD_SKILL.replace("name: demo", f"name: {name}") + body
+        )
+
+    def test_valid_skill_section_pointer_passes(self) -> None:
+        self._add_skill("other", "\n## Some Heading — with a trailing clause\n\nbody\n")
+        self._add_skill("caller", '\nFollow `skills/other/SKILL.md` ("Some Heading") verbatim.\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_renamed_skill_section_fails(self) -> None:
+        # A prose trim deleted two skill section headings, so skill targets need the same check as
+        # rule targets — otherwise a skill->skill pointer rots with CI green.
+        self._add_skill("other", "\n## Renamed Heading\n\nbody\n")
+        self._add_skill("caller", '\nFollow `skills/other/SKILL.md` ("Some Heading") verbatim.\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Some Heading", r.stdout)
+
+    def test_pointer_to_missing_skill_file_fails(self) -> None:
+        # Assert the existence message specifically: "ghost" alone was satisfied by the weaker
+        # "no heading there matches" that a deleted existence branch would emit instead.
+        self._add_skill("caller", '\nFollow `skills/ghost/SKILL.md` ("Some Heading") verbatim.\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("references skills/ghost/SKILL.md, which does not exist", r.stdout)
+
+    def test_bare_skill_reference_must_exist(self) -> None:
+        # A skill reference with no ("Section") is a first-class reference now, so check 2 owns it.
+        self._add_skill("caller", "\nSee `skills/ghost/SKILL.md` for details.\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("references skills/ghost/SKILL.md, which does not exist", r.stdout)
+
+    def test_line_wrapped_pointer_is_checked(self) -> None:
+        # The repo hard-wraps prose at ~100 cols, so a cosmetic reflow used to disarm the check.
+        self._add_skill("other", "\n## Real Heading\n\nbody\n")
+        self._add_skill("caller", '\nThe bar lives in `skills/other/SKILL.md`\n("Ghost Heading") — wrapped.\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Ghost Heading", r.stdout)
+
+    def test_frontmatter_comment_does_not_satisfy_pointer(self) -> None:
+        # `#` lines in YAML frontmatter are not headings; counting them let a rotted pointer pass.
+        (self.root / "skills" / "other").mkdir(parents=True)
+        (self.root / "skills" / "other" / "SKILL.md").write_text(
+            "---\nname: other\n# Ghost Heading appears only in this comment\n"
+            "description: does things\nallowed-tools: Read\n---\n\n## Real Heading\n\nbody\n"
+        )
+        self._add_skill("caller", '\nSee `skills/other/SKILL.md` ("Ghost Heading").\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Ghost Heading", r.stdout)
+
+    def test_pointer_inside_a_fence_is_not_enforced(self) -> None:
+        # A pointer shown inside a fence is documentation of the form, not a live pointer —
+        # otherwise the form becomes undocumentable inside a skill or rule.
+        self._add_skill("caller", '\n```markdown\nCopy `rules/python.md` ("Ghost Heading") verbatim.\n```\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_rotted_pointer_in_a_rule_source_fails(self) -> None:
+        # rules/ is scanned as a pointer SOURCE too; dropping that argument left the suite green.
+        (self.root / "rules" / "other.md").write_text("# other\n\n## Real Heading\n\nbody\n")
+        (self.root / "rules" / "python.md").write_text(
+            GOOD_RULE + '\nSee `rules/other.md` ("Ghost Heading") for details.\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Ghost Heading", r.stdout)
+
+    def _go_pair(self, std_vars: str, scaffold_vars: str) -> None:
+        (self.root / "rules" / "golang.md").write_text(f"# go\n\n```go\nvar (\n{std_vars})\n```\n")
+        (self.root / "skills" / "go-init").mkdir(parents=True, exist_ok=True)
+        (self.root / "skills" / "go-init" / "SKILL.md").write_text(
+            GOOD_SKILL + f"\n```go\nvar (\n{scaffold_vars})\n```\n"
+        )
+
+    def test_go_standard_without_its_scaffolder_fails(self) -> None:
+        # Requiring BOTH files silently disarmed 2c: renaming go-init turned the check off.
+        (self.root / "rules" / "golang.md").write_text('# go\n\n```go\nvar (\n\tVersion = "v0.0.0"\n)\n```\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("counterpart exists", r.stdout)
+
+    def test_later_checks_still_run_alongside_a_go_var_drift(self) -> None:
+        # 2c's report was a bare `diff | sed` under `set -euo pipefail`: a drift aborted the script
+        # and every later check (block drift, pins, selftests) was silently skipped.
+        self._go_pair('\tVersion = "v0.0.0"\n\tBuilder = "unknown"\n', '\tVersion = "v0.0.0"\n')
+        (self.root / "rules" / "img.md").write_text(
+            "# img\n\nCOPY --from=ghcr.io/astral-sh/uv:0.9.6 /uv /usr/local/bin/uv\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("Go build-time var set differs", r.stdout)
+        self.assertIn("diverges", r.stdout)
+
+    def test_english_possessive_is_not_a_pointer(self) -> None:
+        # The regression this anchoring exists for: an unanchored pattern read `zap`'s "sugared" as
+        # a pointer to a skill named zap and failed the commit on ordinary prose.
+        self._add_skill("caller", '\nUse `zap`\'s "sugared" logger for brevity.\n')
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_missing_go_var_block_fails(self) -> None:
+        # Both sides empty compare equal, which would pass a tree whose var block was restructured
+        # away — the gate would stop gating silently.
+        (self.root / "rules" / "golang.md").write_text("# go\n\nno var block here\n")
+        (self.root / "skills" / "go-init").mkdir(parents=True)
+        (self.root / "skills" / "go-init" / "SKILL.md").write_text(GOOD_SKILL + "\nnone either\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("no Go build-time var block", r.stdout)
 
     def test_go_build_var_set_drift_fails(self) -> None:
         # The exact drift that lost `Builder`: rules/golang.md declared it, the go-init template
