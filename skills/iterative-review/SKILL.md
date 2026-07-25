@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.1.2"
+version: "1.1.3"
 ---
 
 ## Task
@@ -11,30 +11,24 @@ Assess the current state with a review skill, fix the findings, re-assess, repea
 
 Default review skill: `/my-review`. If that is not available, fall back in order to `/review`, `/security-review`, or whatever review-style skill the user specifies.
 
-**Language-agnostic.** This skill works on any project: Go, Python, TypeScript, Rust, Java, shell, Terraform, Kubernetes manifests, whatever. The examples below happen to be Go (`go build`, `go test -race`, …) because that is one common case — substitute the project's native toolchain (`pytest`, `cargo test`, `npm test`, `tflint`, `shellcheck`, `kubectl apply --dry-run`, …) as appropriate.
+**Language-agnostic.** Examples below are Go; substitute the project's toolchain (`pytest`, `cargo test`, `npm test`, `tflint`, `shellcheck`, …).
 
-## Failure mode to avoid (read this first)
+## Do not stop at the review
 
-The default failure mode is: invoke the review sub-skill, render its findings to the user, **end the turn**. Do not do that. The review sub-skill's output is *intermediate raw material*, not the deliverable of this skill. You are running a multi-round loop; the review is step 1 of *N* steps, not the answer.
+The review report is **input to step 2, not the deliverable** — printing findings and stopping is the
+one failure this skill exists to prevent. Triage and fix in the same turn, without asking for
+confirmation. The tell that you have slipped: you have printed the report and are reaching for the
+end of the turn, or waiting for the user to react to findings. The only legitimate end-of-turn states:
 
-Symptoms that you've slipped into the failure mode:
-
-- You posted the review template (Critical / High / Medium / Low / Positive sections) and stopped.
-- You're "waiting for the user to react to the findings."
-- You're thinking "the review is done, ball's in their court."
-
-If any of those describe your current state, you are mid-skill, not done. **Continue to triage and fix in the same turn**, without asking for confirmation.
-
-The only legitimate end-of-turn states are:
-1. The exit conditions below have been met (Empty / Iteration cap / Oscillation), or
-2. The user has interrupted you with a course-correction, or
-3. A gate failure that needs a question to resolve (escalate explicitly — don't go silent).
+1. An exit condition below is met (Empty / Iteration cap / Oscillation), or
+2. The user interrupted with a course-correction, or
+3. A gate failure needs a question to resolve (escalate explicitly — don't go silent).
 
 ## Loop
 
 For each round (max 3):
 
-1. **Assess** — invoke the review skill. Capture every finding. The sub-skill prints its report in its own format; that is fine and expected — **what you must not do is stop there.** The report is your input to step 2, not the deliverable of this skill. Treat it like the result of any other tool call, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
+1. **Assess** — invoke the review skill. Capture every finding, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
 2. **Triage** each finding into exactly one bucket:
    - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path (classify against OWASP Top 10 / OWASP API Security Top 10 and CWE where it applies), documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
    - **Accept with comment** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Leave a code comment capturing *why* it is acceptable.
@@ -45,7 +39,7 @@ For each round (max 3):
    |---|---|---|
    | ... | Fix / Accept / Escalate | ... |
 
-   The table is informational so the user can follow along (and interrupt if they disagree); do not pause for confirmation. Move directly into the Fix step in the same turn. If the user interjects with a course-correction, adjust the table and continue.
+   The table is informational — the user can follow along and interrupt; do not pause for confirmation. If they interject, adjust the table and continue.
 4. **Fix** the items in the Fix bucket only. Keep diffs minimal. Do not refactor adjacent code.
 5. **Gate** — before re-assessing, all of the following must pass on the changed code. The commands below are examples; pick the project's equivalent:
    - build — e.g., `go build ./...`, `cargo build`, `npm run build`, `python -m compileall`, `terraform validate`
