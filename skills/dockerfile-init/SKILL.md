@@ -2,7 +2,7 @@
 name: dockerfile-init
 description: Generate a production Dockerfile or align an existing one to the standard. Use whenever creating or substantially reworking a Dockerfile — when the user says "write a Dockerfile", "containerize/dockerize this", or asks to align an existing Dockerfile to the standard. Never write a Dockerfile from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 ## Context
@@ -74,32 +74,17 @@ Shipping the bootstrap without `run.sh` gives you the weight of instrumentation 
 
 #### Go
 
-```dockerfile
-FROM golang:1.26-bookworm AS builder
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-ARG VERSION COMMIT_HASH BUILD_TIMESTAMP PROJECT_URL
-RUN CGO_ENABLED=0 go build -ldflags="-s -w \
-    -X 'main.Version=${VERSION}' \
-    -X 'main.CommitHash=${COMMIT_HASH}' \
-    -X 'main.BuildTimestamp=${BUILD_TIMESTAMP}' \
-    -X 'main.ProjectURL=${PROJECT_URL}'" \
-    -o /app ./cmd/app-name
+Copy the **Go build** template from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` ("Go build") verbatim.
 
-FROM gcr.io/distroless/static-debian12:nonroot
-# ... ARGs, LABELs ...
-COPY --from=builder /app /app
-EXPOSE 8080
-ENTRYPOINT ["/app"]
-```
+Entry point is `ARG PKG`: `.` for a root `main.go` (the single-binary default, per the entry-point axis
+in `${CLAUDE_PLUGIN_ROOT}/rules/golang.md`), `./cmd/<binary>` for several. Set the default to match the
+project; never hardcode a `cmd/` path into the `go build` line.
 
-Adapt the build path (`./cmd/app-name`) to match the project's actual entrypoint.
-Keep the `ENV` re-export in Go images too: ldflags bake the values into the binary,
-but the `ENV` makes them readable via `docker inspect` without running it.
+Two that look cosmetic and are not: ldflags inject against `main.`, never the import path (the other
+spelling is silently ignored); and the `ENV` re-export applies to Go too — ldflags bake values into the
+binary, only `ENV` makes them readable via `docker inspect`.
 
-**Align checklist**: multi-stage, `CGO_ENABLED=0`, ldflags with build-time vars, distroless nonroot runtime, OCI labels, builder image Go version consistent with `go.mod` (bump `go.mod` + CI test image + Dockerfile together — never the Dockerfile alone).
+**Align checklist**: multi-stage, `CGO_ENABLED=0`, ldflags against `main.`, `ENV` re-export, distroless nonroot runtime, OCI labels, builder Go version consistent with `go.mod` (bump `go.mod` + CI test image + Dockerfile together — never the Dockerfile alone).
 
 #### Node.js
 
@@ -148,19 +133,8 @@ ENTRYPOINT ["/app"]
 
 ### 4. Generate .dockerignore
 
-Create or update `.dockerignore` with:
-
-```
-.git/
-.github/
-.gitlab-ci.yml
-*.md
-.env*
-.vscode/
-.idea/
-```
-
-Plus language-specific entries (e.g. `__pycache__/`, `.venv/`, `node_modules/`, `target/`, `bin/`).
+Copy the canonical list from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` (".dockerignore") verbatim,
+plus the row for the detected language from the table there.
 
 **Align**: merge missing entries into existing `.dockerignore`.
 

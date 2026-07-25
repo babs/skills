@@ -118,6 +118,108 @@ class ValidateSkillsTest(unittest.TestCase):
         r = run(self.root)
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_valid_section_reference_passes(self) -> None:
+        # A pointer whose heading exists must not false-fail — the heading carries a trailing
+        # "(canonical for …)" the pointer deliberately omits, so the match is a substring.
+        (self.root / "rules" / "python.md").write_text(
+            GOOD_RULE + "\n## Flat layout (canonical for demo)\n\nbody\n"
+        )
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + '\nCopy `${CLAUDE_PLUGIN_ROOT}/rules/python.md` ("Flat layout").\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_renamed_rule_section_fails(self) -> None:
+        # The drift this gate exists for: a skill that POINTS at a heading instead of carrying a
+        # copy rots silently when the heading is renamed — the file still exists, so check 2 passes.
+        (self.root / "rules" / "python.md").write_text(GOOD_RULE + "\n## Renamed layout\n\nbody\n")
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + '\nCopy `${CLAUDE_PLUGIN_ROOT}/rules/python.md` ("Flat layout").\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("Flat layout", r.stdout)
+
+    def test_section_reference_with_punctuation_is_literal(self) -> None:
+        # Section names carry regex metacharacters (".dockerignore", em dashes). -F keeps them
+        # literal: without it, "." would match any character and a rotted pointer could pass.
+        (self.root / "rules" / "python.md").write_text(GOOD_RULE + "\n## Xdockerignore\n\nbody\n")
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + '\nCopy `${CLAUDE_PLUGIN_ROOT}/rules/python.md` (".dockerignore").\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(".dockerignore", r.stdout)
+
+    def test_section_in_code_fence_does_not_satisfy_pointer(self) -> None:
+        # The bypass this filter exists for: the heading was renamed away, but a comment inside a
+        # fenced example still contains the string. Matching any `#` line would pass a dangling
+        # pointer. Hash-counting cannot fix it — `# Flat layout stage` and an H1 are both `# text`.
+        (self.root / "rules" / "python.md").write_text(
+            GOOD_RULE + "\n## Renamed\n\n```dockerfile\n# Flat layout stage\nFROM scratch\n```\n"
+        )
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + '\nCopy `${CLAUDE_PLUGIN_ROOT}/rules/python.md` ("Flat layout").\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Flat layout", r.stdout)
+
+    def test_ambiguous_section_reference_fails(self) -> None:
+        # A pointer that matches two headings resolves to whichever the reader picks: not a pointer.
+        (self.root / "rules" / "python.md").write_text(
+            GOOD_RULE + "\n## Build step — flat\n\nx\n\n## Build step — packaged\n\ny\n"
+        )
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + '\nSee `${CLAUDE_PLUGIN_ROOT}/rules/python.md` ("Build step").\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("matches 2 headings", r.stdout)
+
+    def test_missing_rule_to_rule_reference_fails(self) -> None:
+        # Rule→rule pointers used to be ungated ("double-check the target exists" — a promise, not
+        # a check). A bare rules/<f>.md path in a rule now has to resolve like any other.
+        (self.root / "rules" / "python.md").write_text(GOOD_RULE + "\nSee rules/ghost.md as well.\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("ghost.md", r.stdout)
+
+    def test_go_build_var_set_drift_fails(self) -> None:
+        # The exact drift that lost `Builder`: rules/golang.md declared it, the go-init template
+        # did not, and nothing noticed. These two cannot be a sync_blocks shared block (the skill's
+        # copy sits inside main.go's ```go fence), so the identifier SETS are compared instead.
+        (self.root / "rules" / "golang.md").write_text(
+            "# go\n\n```go\nvar (\n\tVersion = \"v0.0.0\"\n\tBuilder = \"unknown\"\n)\n```\n"
+        )
+        (self.root / "skills" / "go-init").mkdir(parents=True)
+        (self.root / "skills" / "go-init" / "SKILL.md").write_text(
+            GOOD_SKILL + '\n```go\nvar (\n\tVersion = "v0.0.0"\n)\n```\n'  # Builder missing
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("Go build-time var set differs", r.stdout)
+        self.assertIn("Builder", r.stdout)
+
+    def test_matching_go_build_var_set_passes(self) -> None:
+        # Agreement must not depend on byte-identity: same identifiers, different indentation and
+        # different default values still pass — only the SET is normative.
+        (self.root / "rules" / "golang.md").write_text(
+            "# go\n\n```go\nvar (\n    Version = \"v0.0.0\"\n    Builder = \"unknown\"\n)\n```\n"
+        )
+        (self.root / "skills" / "go-init").mkdir(parents=True)
+        (self.root / "skills" / "go-init" / "SKILL.md").write_text(
+            GOOD_SKILL + '\n```go\nvar (\n\tVersion = "dev"\n\tBuilder = "n/a"\n)\n```\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_diverged_python_image_pin_fails(self) -> None:
         (self.root / "rules" / "img.md").write_text("# img\n\nFROM python:3.14-slim-trixie\n")
         (self.root / "rules" / "img2.md").write_text("# img2\n\nFROM python:3.13-slim-bookworm\n")
