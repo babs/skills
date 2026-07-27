@@ -13,12 +13,11 @@ paths: **/*.py
 - Modern type hints only: `list[str]`, `str | None`, `dict[str, Any]` — never `List`, `Optional`, `Dict`
 - Dockerfiles must be multi-stage: build with uv, run with `.venv/bin/python3` binary
 - Base image: `python:3.14-slim-trixie`
-- OTEL: **`opentelemetry-distro` is not optional** — it carries the `opentelemetry_configurator`
-  entry point that `opentelemetry-instrument` needs to build a TracerProvider and attach an
-  exporter. Without it the wrapper still loads the instrumentors, so spans are created and
-  `traceparent` propagates to callees, but **nothing is ever exported** — and the service looks
-  healthy from the inside, its own logs carrying real `trace_id` values. The only symptom is its
-  absence from the trace store, and callees showing a parent span id nobody can resolve.
+- OTEL: **`opentelemetry-distro` is mandatory** — sole carrier of the `opentelemetry_configurator`
+  entry point; without it `opentelemetry-instrument` builds no TracerProvider and **exports
+  nothing**, silently: under `fastapi-structured-logging` logs still show real `trace_id`s and
+  `traceparent` still propagates (it installs an exporter-less `TracerProvider` on first log);
+  elsewhere spans are non-recording and both are zeroed.
 - OTEL: zero-code auto-instrumentation — Dockerfile build stage installs the per-library instrumentors via `.venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -` (not `-a install`: a uv venv has no pip; not `uv run`: it re-syncs the dev group into the `--no-dev` venv). The canonical `run.sh` entrypoint (`<entrypoint>` = `python main.py` flat / `python -m <pkg>` src-layout):
 
   ```bash
@@ -85,20 +84,20 @@ this file disagree, this file wins. Bump them here, not in a skill.
 <!-- block: fastapi-deps -->
 ```toml
 dependencies = [
-    "fastapi>=0.118",
-    "uvicorn[standard]>=0.34",
-    "pydantic>=2.10",
-    "pydantic-settings>=2.7",
-    "python-dotenv>=1.0",
-    "structlog>=24.0",
-    "fastapi-structured-logging>=0.6",
+    "fastapi>=0.140",
+    "uvicorn[standard]>=0.51",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.14",
+    "python-dotenv>=1.2",
+    "structlog>=26.1",
+    "fastapi-structured-logging>=1.0",
     "httpx>=0.28",
-    "opentelemetry-api>=1.29",
-    "opentelemetry-sdk>=1.29",
-    "opentelemetry-distro>=0.50b0",
-    "opentelemetry-instrumentation-fastapi>=0.50b0",
-    "opentelemetry-instrumentation-httpx>=0.50b0",
-    "opentelemetry-exporter-otlp>=1.29",
+    "opentelemetry-api>=1.44",
+    "opentelemetry-sdk>=1.44",
+    "opentelemetry-distro>=0.65b0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-httpx>=0.65b0",
+    "opentelemetry-exporter-otlp>=1.44",
 ]
 ```
 <!-- /block -->
@@ -110,8 +109,8 @@ list *in its own file* and says why; a block boundary must never cut through a T
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=6", "httpx>=0.28",
-    "mypy>=1.13", "ruff>=0.8", "pre-commit>=4", "detect-secrets>=1.5",
+    "pytest>=9", "pytest-asyncio>=1.4", "pytest-cov>=7", "httpx>=0.28",
+    "mypy>=2", "ruff>=0.16", "pre-commit>=4.6", "detect-secrets>=1.5",
 ]
 ```
 <!-- /block -->
