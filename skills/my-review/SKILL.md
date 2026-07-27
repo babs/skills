@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.2.4"
+version: "1.3.0"
 ---
 
 ## Context
@@ -64,6 +64,15 @@ presenting it as the fix is the failure this bar exists to prevent.
 relies on a future human remembering; it would not have caught the bug that just happened. Ask of every
 fix: *"if this had been in place last week, would the defect have been impossible — or merely
 discouraged?"*
+
+## Comments: constraint, not justification
+
+A comment that justifies a choice belongs in the commit message — that is where history is queried. A
+comment in the file states a constraint a reader cannot derive from the code (`COPY *.py does NOT match
+run-*.sh`, `chown before USER or the writable dir breaks`). Flag both directions: rationale parked in the
+file, and an undocumented gotcha. Density is part of it — one line unless the constraint needs two; a
+six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
+statement below it.
 <!-- /block -->
 
 ## Output
@@ -74,6 +83,18 @@ and say `None.`
 
 **The report is the deliverable: print it in full, as message text, before anything else** — never only
 inside a tool call, never condensed into the menu. Then move to the fix-scope step below.
+
+**Every finding names its fix, with its tier.** A defect without a proposed change is half a review: the
+reader has to re-derive the remedy you already worked out. One line, concrete enough to act on — the
+file and the change, not "improve error handling". Two explicit exceptions: a trade-off you consciously
+own (`Fix: none — trade-off owned: …`) and a T1 you chose over an existing T2 (name the T2 and its cost,
+per the fix bar). A finding whose only fix is T0 is not a finding — find the T1/T2 or drop it.
+
+**Be word-scarce.**
+
+- One sentence per defect, one line per fix. Evidence is the command and its output, not how you found it.
+- No preamble, no diff recap, no paragraph defending a severity. Style nits only when they change meaning.
+- Cut any sentence whose deletion loses no fact, caveat or risk — never one that does.
 
 ## Fix scope — offer after the review
 

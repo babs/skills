@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.1.3"
+version: "1.2.0"
 ---
 
 ## Task
@@ -31,7 +31,7 @@ For each round (max 3):
 1. **Assess** — invoke the review skill. Capture every finding, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
 2. **Triage** each finding into exactly one bucket:
    - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path (classify against OWASP Top 10 / OWASP API Security Top 10 and CWE where it applies), documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
-   - **Accept with comment** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Leave a code comment capturing *why* it is acceptable.
+   - **Accept** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Record *why* in the triage table and the commit message; add a code comment only when it states a constraint the code cannot show.
    - **Escalate** — the finding touches a design decision or extends scope beyond the original change. Surface to the user; do not silently expand scope.
 3. **Display the triage table, then proceed straight to Fix without waiting for approval:**
 
@@ -56,7 +56,7 @@ For each round (max 3):
 
 Stop when **any** of these holds:
 
-- **Empty** — no Critical or High findings remain, the gate is green, and remaining Medium/Low findings are Accept-with-comment items (documented trade-offs).
+- **Empty** — no Critical or High findings remain, the gate is green, and remaining Medium/Low findings are Accept items (trade-offs recorded in the triage table).
 - **Iteration cap** — 3 rounds completed. Summarize remaining findings with triage buckets and hand back to the user with "escalation needed".
 - **Oscillation detected** — see below.
 
@@ -71,7 +71,7 @@ Reviewers in the same conversation can flip-flop a finding ("add X" → next rou
 ## Scope discipline
 
 - Scope is the **changed code** from the original task, not the whole repository.
-- Pre-existing lint/test problems in files you did not touch: note them and skip, unless they block the green-gate. If they block, suppress via config (with a comment explaining why) rather than expanding the diff.
+- Pre-existing lint/test problems in files you did not touch: note them and skip, unless they block the green-gate. If they block, suppress via config (with a comment naming what the suppression covers) rather than expanding the diff.
 - Do not introduce new features, refactors, or abstractions that were not flagged by the review.
 - Documentation updates count as in-scope when the change alters behavior the doc describes. Out-of-scope doc drift (unrelated stale sections) should be noted to the user, not silently fixed.
 
@@ -125,4 +125,13 @@ presenting it as the fix is the failure this bar exists to prevent.
 relies on a future human remembering; it would not have caught the bug that just happened. Ask of every
 fix: *"if this had been in place last week, would the defect have been impossible — or merely
 discouraged?"*
+
+## Comments: constraint, not justification
+
+A comment that justifies a choice belongs in the commit message — that is where history is queried. A
+comment in the file states a constraint a reader cannot derive from the code (`COPY *.py does NOT match
+run-*.sh`, `chown before USER or the writable dir breaks`). Flag both directions: rationale parked in the
+file, and an undocumented gotcha. Density is part of it — one line unless the constraint needs two; a
+six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
+statement below it.
 <!-- /include -->
