@@ -90,6 +90,21 @@ class SyncBlocksTest(unittest.TestCase):
         self.assertIn("0.118", self.tree.skill.read_text())
         self.assertEqual(run(self.tree.root).returncode, 0)
 
+    def test_include_in_any_md_under_skills_is_checked(self) -> None:
+        # template.md is the real case (review skills duplicate their report format there); notes.md
+        # stands for every other name — an unscanned file would fail OPEN, never reporting drift.
+        for name in ("template.md", "notes.md", "sub/deep.md"):
+            with self.subTest(name=name):
+                f = self.tree.root / "skills" / "demo" / name
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text("<!-- include: rules/python.md#deps -->\nWRONG\n<!-- /include -->\n")
+                r = run(self.tree.root)
+                self.assertEqual(r.returncode, 1, f"an include inside skills/demo/{name} must be checked")
+                self.assertIn(f"skills/demo/{name}", r.stdout)
+                self.assertEqual(run(self.tree.root, "--fix").returncode, 0)
+                self.assertIn("0.118", f.read_text())
+                f.unlink()
+
     def test_include_in_rules_is_checked_too(self) -> None:
         other = self.tree.root / "rules" / "other.md"
         other.write_text("<!-- include: rules/python.md#deps -->\nWRONG\n<!-- /include -->\n")

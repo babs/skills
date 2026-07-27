@@ -435,6 +435,40 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("diverges", r.stdout)
 
+    # --- check 6: review-template typography (two of its three characters are invisible) --------
+
+    GOOD_TEMPLATE = (
+        "### Critical\n\n"
+        "∙ **C1.** {defect} `{file}:{line}` — {evidence}  \n"
+        "  → **Fix (T1|T2):** {the concrete change, one line}\n"
+    )
+
+    def _write_template(self, body: str) -> None:
+        (self.root / "skills" / "demo" / "template.md").write_text(body)
+
+    def test_intact_template_passes(self) -> None:
+        self._write_template(self.GOOD_TEMPLATE)
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_stripped_hard_break_fails(self) -> None:
+        self._write_template(self.GOOD_TEMPLATE.replace("{evidence}  ", "{evidence}"))
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, "a lost trailing double space must be caught")
+        self.assertIn("/ 0 hard", r.stdout)
+
+    def test_nbsp_downgraded_to_spaces_fails(self) -> None:
+        self._write_template(self.GOOD_TEMPLATE.replace("  ", "  "))
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, "NBSP replaced by plain spaces must be caught")
+        # The counter, not the generic message: mutating the hard break instead would also
+        # print "typography lost" and the test would pass while checking nothing.
+        self.assertIn("/ 0 indented", r.stdout)
+
+    def test_template_without_the_glyph_is_not_checked(self) -> None:
+        # A skill may ship a template that is not a finding report; check 6 must ignore it.
+        self._write_template("### Report\n\n- item\n")
+        self.assertEqual(run(self.root).returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

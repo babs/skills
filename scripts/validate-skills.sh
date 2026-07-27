@@ -6,7 +6,9 @@
 #   2c. the Go build-time var set agrees between rules/golang.md and the go-init template,
 #   3. shared rule/skill blocks have not drifted (scripts/sync_blocks.py, incl. its own unit tests),
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image),
-#      and no doc still prescribes a retired md2clip command form (plus md2clip's own --selftest).
+#      and no doc still prescribes a retired md2clip command form (plus md2clip's own --selftest),
+#   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
+#   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent).
 # Sources scanned for 2/2b: skills/**.md, rules/**.md, CONTRIBUTING.md.
 # Exit 0 = clean, 1 = violations found.
 set -euo pipefail
@@ -232,6 +234,29 @@ while IFS= read -r f; do
   fi
   # `|| true`: zero matches is the common case (most files carry no deps list at all).
 done < <(grep -rlE '"opentelemetry-instrumentation-' "$ROOT/rules" "$ROOT/skills" || true)
+
+# 6. The review templates place their finding glyph and indent BY HAND — the terminal that renders
+#    the report normalises `-`/`*` to a hyphen — and two of the three characters are invisible: the
+#    trailing double space (hard break) and the two leading NBSP (indent). Any whitespace-eating
+#    tool strips them without a trace. Counted per line, so ONE lost break is caught too.
+# Escapes, not literal glyphs: a NBSP in THIS file would be as invisible as the ones it guards.
+# Anchored on the bold ID: a Positive line carries no fix, so it needs no hard break either.
+dot=$'\u2219'
+nbsp=$'\u00a0'
+while IFS= read -r -d '' tpl; do
+  # `|| true`: grep -c exits 1 on zero matches, which `set -e` would treat as fatal.
+  findings="$(grep -c "^${dot} \*\*" "$tpl" || true)"
+  [[ "$findings" -eq 0 ]] && continue
+  breaks="$(grep -c "^${dot} \*\*.*  $" "$tpl" || true)"
+  fixes="$(grep -c "→ \*\*Fix (T1|T2):" "$tpl" || true)"
+  indented="$(grep -c "^${nbsp}${nbsp}→ \*\*Fix (T1|T2):" "$tpl" || true)"
+  if [[ "$findings" != "$breaks" || "$fixes" != "$indented" ]]; then
+    echo "ERROR: ${tpl#"$ROOT/"}: finding typography lost (${findings} finding(s) / ${breaks} hard"
+    echo "  break(s), ${fixes} fix line(s) / ${indented} indented) — restore the trailing double"
+    echo "  space and the two NBSP; the report renders as one run-on line without them."
+    rc=1
+  fi
+done < <(find "$ROOT/skills" -name 'template.md' -print0)
 
 if [[ "$rc" -eq 0 ]]; then
   echo "skills validation passed"

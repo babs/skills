@@ -63,7 +63,9 @@ PARSERS = {
 
 
 def sources(root: Path) -> list[Path]:
-    return sorted((root / "rules").glob("*.md")) + sorted((root / "skills").glob("*/SKILL.md"))
+    # EVERY .md, at any depth: an unscanned file carrying an include is an ungated copy, and it
+    # fails open — the drift is never reported. Narrower globs left that hole for template.md.
+    return sorted((root / "rules").rglob("*.md")) + sorted((root / "skills").rglob("*.md"))
 
 
 def marker_integrity(rel: str, text: str) -> list[str]:
