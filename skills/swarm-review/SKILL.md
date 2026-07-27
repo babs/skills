@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 # Swarm Review
@@ -37,7 +37,7 @@ For every agent, the prompt MUST include:
 - **Stance line** — the lens-specific operating assumption from the table below. This is **not** a persona ("act grumpy"); it's a frame that biases what the agent prioritises without distorting tone. Include it verbatim in the prompt.
 - **Scope block** — the diff, the changed-files list, and the change summary from the step above.
 - **Lens checklist** — the specific items from the table below for that perspective.
-- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` for every finding, plus a **complexity index** for the fix: `cx:S` (localized — one line / one file, no design impact), `cx:M` (multi-site, or needs a new test / small refactor), `cx:L` (design-level or cross-cutting change). Severity says how much it hurts; complexity says how much it costs to fix — report both, never let one influence the other. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
+- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` and a tiered fix line (`→ **Fix (T1|T2):**`, canonical: `skills/my-review/SKILL.md` ("The fix bar")) for every finding, plus a **complexity index** for the fix: `cx:S` (localized — one line / one file, no design impact), `cx:M` (multi-site, or needs a new test / small refactor), `cx:L` (design-level or cross-cutting change). Severity says how much it hurts; complexity says how much it costs to fix — report both, never let one influence the other. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
 - **Boundary reminder** — *"If a finding sits on the border of another lens, mention it once and tag `[overlap:<lens>]`; do not expand into that lens."*
 - **Execution mandate** — *"Prefer running over reading. If the code can be executed, execute it: run the
   suite, build the image, curl the endpoint, break the guard and confirm it fails. Every Critical/High
@@ -54,9 +54,9 @@ For every agent, the prompt MUST include:
 |---|---|---|
 | **security** | *"Assume an adversary reads this code looking for ways to abuse it. What's the cheapest exploit?"* | Input validation, injection (SQL/cmd/template/XSS), authn/authz, secrets in code or logs, crypto misuse, SSRF, deserialization, dependency CVEs touched by the diff, least-privilege regressions. Map findings to OWASP Top 10 / OWASP API Security Top 10 categories and cite CWE IDs; use OWASP ASVS as the checklist for verification depth |
 | **resiliency** | *"Assume this runs at 3 AM during a partial outage. What fails first, and does failure stay contained?"* | Error handling, retry/backoff, timeouts, idempotency, partial-failure paths, resource cleanup, circuit breakers, graceful degradation, race conditions, concurrency, blast radius of failures |
-| **code-quality** | *"Assume a tired teammate inherits this in 6 months. Where will they stumble?"* | Readability, complexity, duplication, dead code, naming, language idioms, simplicity-vs-cleverness, abstraction fit, comments-explain-WHY |
+| **code-quality** | *"Assume a tired teammate inherits this in 6 months. Where will they stumble?"* | Readability, complexity, duplication, dead code, naming, language idioms, simplicity-vs-cleverness, abstraction fit, comments stating a constraint the code cannot show — rationale for a choice belongs in the commit message, and a six-line comment wall over a two-line change is a finding |
 | **functional** | *"Assume the spec/ticket is what users actually need. Does the code do that, or something adjacent?"* | Does the change actually solve the stated problem? Edge cases, off-by-one, boundary conditions, regressions in adjacent features, behavior under empty/null/large inputs |
-| **documentation** | *"Assume the only thing a new user has is the docs. Can they succeed?"* | README, ADRs, API/OpenAPI specs, CLI `--help`, code comments WHERE they explain WHY, CHANGELOG, migration notes; accuracy vs. the new code |
+| **documentation** | *"Assume the only thing a new user has is the docs. Can they succeed?"* | README, ADRs, API/OpenAPI specs, CLI `--help`, code comments where they state a constraint the code cannot show, CHANGELOG, migration notes; accuracy vs. the new code |
 | **global-coherence** | *"Assume the repo already has the utilities and patterns this needs. Did the author find them, or build a parallel one?"* | Architectural fit, naming/module conventions consistent with the rest of the repo, no parallel implementations of existing utilities, layering respected, public surface kept small |
 | **tests-coverage** | *"Assume someone refactors this next sprint without reading the tests. Will the tests catch the breakage?"* | Are new code paths tested? Are edge cases covered? Test quality (no over-mocking, deterministic, fast), missing regression tests for the bug being fixed, coverage of error paths |
 
@@ -66,7 +66,7 @@ The per-agent **Execution mandate** above IS the evidence bar (canonical: `skill
 
 Once all seven agents return:
 
-1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens and complexity index, e.g. `[security] cx:S SQL string built via concatenation src/db.py:42`.
+1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens and complexity index, e.g. `[security] cx:S SQL string built via concatenation src/db.py:42` followed by its `→ **Fix (T1|T2):**` line.
 2. **Deduplicate** — if two lenses raised the same `file:line` with the same root cause, keep one entry and list both lens tags.
 3. **Assign stable IDs** during consolidation (`C1, C2, … H1, H2, …`) so the user can reference findings in follow-up (`"apply C1 and H3"`). Subagents do **not** number their own findings — numbering is the consolidator's job after dedup.
 4. **Top of report**: 2-3 sentence executive summary + a one-line verdict (`ship`, `ship-with-followups`, `block`).
