@@ -39,20 +39,20 @@ requires-python = ">=3.14"
 <!-- include: rules/python.md#fastapi-deps -->
 ```toml
 dependencies = [
-    "fastapi>=0.118",
-    "uvicorn[standard]>=0.34",
-    "pydantic>=2.10",
-    "pydantic-settings>=2.7",
-    "python-dotenv>=1.0",
-    "structlog>=24.0",
-    "fastapi-structured-logging>=0.6",
+    "fastapi>=0.140",
+    "uvicorn[standard]>=0.51",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.14",
+    "python-dotenv>=1.2",
+    "structlog>=26.1",
+    "fastapi-structured-logging>=1.0",
     "httpx>=0.28",
-    "opentelemetry-api>=1.29",
-    "opentelemetry-sdk>=1.29",
-    "opentelemetry-distro>=0.50b0",
-    "opentelemetry-instrumentation-fastapi>=0.50b0",
-    "opentelemetry-instrumentation-httpx>=0.50b0",
-    "opentelemetry-exporter-otlp>=1.29",
+    "opentelemetry-api>=1.44",
+    "opentelemetry-sdk>=1.44",
+    "opentelemetry-distro>=0.65b0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-httpx>=0.65b0",
+    "opentelemetry-exporter-otlp>=1.44",
 ]
 ```
 <!-- /include -->
@@ -61,8 +61,8 @@ dependencies = [
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=6", "httpx>=0.28",
-    "mypy>=1.13", "ruff>=0.8", "pre-commit>=4", "detect-secrets>=1.5",
+    "pytest>=9", "pytest-asyncio>=1.4", "pytest-cov>=7", "httpx>=0.28",
+    "mypy>=2", "ruff>=0.16", "pre-commit>=4.6", "detect-secrets>=1.5",
 ]
 ```
 <!-- /include -->
