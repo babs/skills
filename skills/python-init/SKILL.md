@@ -49,6 +49,7 @@ dependencies = [
     "httpx>=0.28",
     "opentelemetry-api>=1.29",
     "opentelemetry-sdk>=1.29",
+    "opentelemetry-distro>=0.50b0",
     "opentelemetry-instrumentation-fastapi>=0.50b0",
     "opentelemetry-instrumentation-httpx>=0.50b0",
     "opentelemetry-exporter-otlp>=1.29",
