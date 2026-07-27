@@ -13,12 +13,11 @@ paths: **/*.py
 - Modern type hints only: `list[str]`, `str | None`, `dict[str, Any]` — never `List`, `Optional`, `Dict`
 - Dockerfiles must be multi-stage: build with uv, run with `.venv/bin/python3` binary
 - Base image: `python:3.14-slim-trixie`
-- OTEL: **`opentelemetry-distro` is not optional** — it carries the `opentelemetry_configurator`
-  entry point that `opentelemetry-instrument` needs to build a TracerProvider and attach an
-  exporter. Without it the wrapper still loads the instrumentors, so spans are created and
-  `traceparent` propagates to callees, but **nothing is ever exported** — and the service looks
-  healthy from the inside, its own logs carrying real `trace_id` values. The only symptom is its
-  absence from the trace store, and callees showing a parent span id nobody can resolve.
+- OTEL: **`opentelemetry-distro` is mandatory** — sole carrier of the `opentelemetry_configurator`
+  entry point; without it `opentelemetry-instrument` builds no TracerProvider and **exports
+  nothing**, silently: under `fastapi-structured-logging` logs still show real `trace_id`s and
+  `traceparent` still propagates (it installs an exporter-less `TracerProvider` on first log);
+  elsewhere spans are non-recording and both are zeroed.
 - OTEL: zero-code auto-instrumentation — Dockerfile build stage installs the per-library instrumentors via `.venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -` (not `-a install`: a uv venv has no pip; not `uv run`: it re-syncs the dev group into the `--no-dev` venv). The canonical `run.sh` entrypoint (`<entrypoint>` = `python main.py` flat / `python -m <pkg>` src-layout):
 
   ```bash

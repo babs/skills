@@ -395,6 +395,38 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("retired command form", r.stdout)
 
+    def test_instrumentors_without_distro_fails(self) -> None:
+        # The v1.9.0 defect: the canonical stack listed api/sdk/instrumentors/exporter but not the
+        # distro, so opentelemetry-instrument found no configurator entry point and exported
+        # nothing — while the app's own logs still showed real trace ids. Invisible without a gate.
+        (self.root / "rules" / "py.md").write_text(
+            '# py\n\n```toml\ndependencies = [\n    "opentelemetry-sdk>=1.29",\n'
+            '    "opentelemetry-instrumentation-fastapi>=0.50b0",\n]\n```\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("opentelemetry-distro", r.stdout)
+
+    def test_instrumentors_with_distro_passes(self) -> None:
+        # The gate must accept the correct list, or it is just a ban on instrumentors.
+        (self.root / "rules" / "py.md").write_text(
+            '# py\n\n```toml\ndependencies = [\n    "opentelemetry-sdk>=1.29",\n'
+            '    "opentelemetry-distro>=0.50b0",\n'
+            '    "opentelemetry-instrumentation-fastapi>=0.50b0",\n]\n```\n'
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_otel_prose_without_deps_list_passes(self) -> None:
+        # Prose ABOUT the packages is not a declaration: dockerfile-init discusses "OTel deps" and
+        # opentelemetry-bootstrap without listing any. A gate that trips on it would be unusable.
+        (self.root / "rules" / "docker2.md").write_text(
+            "# d\n\nRun `.venv/bin/opentelemetry-bootstrap -a requirements`; "
+            "no OTel deps -> drop the line.\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_diverged_pin_fails(self) -> None:
         (self.root / "rules" / "docker.md").write_text(
             "# other\n\nCOPY --from=ghcr.io/astral-sh/uv:0.9.6 /uv /usr/local/bin/uv\n"

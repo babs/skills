@@ -217,6 +217,22 @@ for pin in 'astral-sh/uv:[0-9][A-Za-z0-9._-]*' 'python:3\.[0-9]+-slim-[a-z]+' \
   fi
 done
 
+# 5. The OTel dependency set is all-or-nothing. `opentelemetry-distro` is the SOLE carrier of the
+#    `opentelemetry_configurator` entry point, so a deps list naming instrumentors WITHOUT it
+#    scaffolds a service that exports nothing — and says nothing: under fastapi-structured-logging
+#    its own logs still carry real trace ids, because that library installs an exporter-less
+#    TracerProvider on the first log record. Only the empty trace store tells you. That shipped.
+#    Matched on the quoted TOML form so prose ABOUT the packages (dockerfile-init's "OTel deps"
+#    paragraph) is not a dependency declaration and does not trip the gate.
+while IFS= read -r f; do
+  if ! grep -q '"opentelemetry-distro' "$f"; then
+    echo "ERROR: ${f#"$ROOT/"} declares opentelemetry instrumentors without \"opentelemetry-distro\":"
+    echo "  no configurator entry point -> no TracerProvider -> nothing is ever exported."
+    rc=1
+  fi
+  # `|| true`: zero matches is the common case (most files carry no deps list at all).
+done < <(grep -rlE '"opentelemetry-instrumentation-' "$ROOT/rules" "$ROOT/skills" || true)
+
 if [[ "$rc" -eq 0 ]]; then
   echo "skills validation passed"
 fi
