@@ -52,10 +52,11 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
+# --locked, never --frozen: --frozen installs a stale lock silently, build stays green.
 # `-a requirements | uv pip install`: a uv venv has no pip, so `bootstrap -a install` (which
 # shells out to pip) would fail. Call the .venv binary directly, NOT `uv run` — `uv run` re-syncs
 # the dev group back into this --no-dev venv that ships in the final image.
-RUN uv sync --frozen --no-dev && \
+RUN uv sync --locked --no-dev && \
     .venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -
 
 FROM python:3.14-slim-trixie
@@ -100,10 +101,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 # --no-install-project: the source is not here yet. Without this, uv builds and installs an EMPTY
 # package (hatchling finds no modules under src/) and imports only work by accident at runtime.
-RUN uv sync --frozen --no-dev --no-install-project
+# --locked holds with src/ absent: the lock assertion reads only the root pyproject.toml.
+RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 # Now the project itself is installed, against real source.
-RUN uv sync --frozen --no-dev && \
+RUN uv sync --locked --no-dev && \
     .venv/bin/opentelemetry-bootstrap -a requirements | uv pip install --requirement -
 ```
 
