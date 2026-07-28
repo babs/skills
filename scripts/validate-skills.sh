@@ -6,7 +6,8 @@
 #   2c. the Go build-time var set agrees between rules/golang.md and the go-init template,
 #   3. shared rule/skill blocks have not drifted (scripts/sync_blocks.py, incl. its own unit tests),
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image),
-#      and no doc still prescribes a retired md2clip command form (plus md2clip's own --selftest),
+#      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
+#      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest),
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
 #   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent).
 # Sources scanned for 2/2b: skills/**.md, rules/**.md, CONTRIBUTING.md.
@@ -200,6 +201,19 @@ while IFS= read -r hit; do
   rc=1
   # `|| true`: zero matches is the GOOD case here, but grep exits 1 for it and `set -e` would kill us.
 done < <(grep -rnE '«data HTML|hexdump -ve' "$ROOT/skills" "$ROOT/rules" || true)
+
+# Same doctrine, positive form: every GFM→HTML pandoc invocation — in the bundled script AND in the
+# copy-paste fallback table — must carry both flags, or the Teams paste is broken in a way nothing
+# else catches (--selftest returns before pandoc is ever reached).
+#   --no-highlight : the highlighter's <span> soup collapses the code block onto one line.
+#   --wrap=none    : the default 72-column wrap injects newlines Teams renders as line breaks.
+while IFS= read -r hit; do
+  if [[ "$hit" != *--no-highlight* || "$hit" != *--wrap=none* ]]; then
+    echo "ERROR: pandoc gfm→html form missing --no-highlight/--wrap=none: $hit"
+    rc=1
+  fi
+  # `|| true`: grep exits 1 when the repo has no such invocation at all, which is not a violation.
+done < <(grep -rn -- 'pandoc -f gfm -t html' "$ROOT/skills" "$ROOT/rules" || true)
 
 # 4. Pinned values that live outside any block must at least be UNIFORM across the repo
 #    (the historical drift class: same pin bumped in one file, stale in three).
