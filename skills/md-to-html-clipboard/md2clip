@@ -51,7 +51,9 @@ read_src() { if [ "${#files[@]}" -gt 0 ]; then cat "${files[@]}"; else cat; fi; 
 
 # --no-highlight: plain <pre><code> (no coloring spans/anchors) — otherwise Teams
 # collapses the newlines between the spans → code block merged onto one line.
-html="$(read_src | pandoc -f gfm -t html --no-highlight)"
+# --wrap=none: pandoc's 72-column wrap injects newlines mid-text (and mid-tag); Teams renders
+# them as line breaks.
+html="$(read_src | pandoc -f gfm -t html --no-highlight --wrap=none)"
 
 if [ "$TEAMS" -eq 1 ]; then
   html="$(printf '%s' "$html" | teams_transform)"

@@ -2,7 +2,7 @@
 name: md-to-html-clipboard
 description: Render Markdown to HTML and load it into the system clipboard so it pastes as rich-formatted text in apps that don't accept Markdown (Teams, Slack, Outlook, Confluence WYSIWYG, Gmail, …). Use when the user asks to "copy as HTML", "paste this in Teams/Slack/Outlook", "convert markdown for clipboard", or hands over Markdown destined for a non-Markdown UI.
 allowed-tools: Bash(md2clip *), Bash(bash *md2clip*), Bash(cat *), Bash(pandoc *), Bash(xclip *), Bash(wl-copy *), Bash(osascript *), Bash(uname *), Bash(command *), Bash(which *)
-version: "1.2.1"
+version: "1.2.2"
 ---
 
 ## Task
@@ -46,9 +46,13 @@ no per-platform pipeline to remember.
 
 | Platform | Command |
 |---|---|
-| Linux + X11 | `pandoc -f gfm -t html \| xclip -selection clipboard -t text/html -i` |
-| Linux + Wayland | `pandoc -f gfm -t html \| wl-copy --type text/html` |
-| macOS | `pandoc -f gfm -t html > /tmp/m.html && osascript -e 'on run argv' -e 'set the clipboard to (read (POSIX file (item 1 of argv)) as «class HTML»)' -e 'end run' /tmp/m.html` |
+| Linux + X11 | `pandoc -f gfm -t html --no-highlight --wrap=none \| xclip -selection clipboard -t text/html -i` |
+| Linux + Wayland | `pandoc -f gfm -t html --no-highlight --wrap=none \| wl-copy --type text/html` |
+| macOS | `pandoc -f gfm -t html --no-highlight --wrap=none > /tmp/m.html && osascript -e 'on run argv' -e 'set the clipboard to (read (POSIX file (item 1 of argv)) as «class HTML»)' -e 'end run' /tmp/m.html` |
+
+Both flags are load-bearing for Teams: `--no-highlight` keeps the code block from collapsing onto
+one line, `--wrap=none` keeps paragraphs from breaking every 72 columns.
+(`scripts/validate-skills.sh` rejects a bare form.)
 
 > **macOS — reject the hex one-liner.** The widely-circulated variant that hex-encodes the HTML and
 > feeds it through `xargs` into an AppleScript data literal is broken: BSD `xargs` caps `-I`
@@ -60,7 +64,7 @@ no per-platform pipeline to remember.
 
 - **Format.** `gfm` covers fenced code blocks, tables, task lists, autolinks. Use plain `markdown` only if the input clearly relies on pandoc-only syntax.
 - **Tables.** GFM tables paste correctly in Outlook / Confluence / Word but **not** in Slack (Slack strips tables). Warn the user if their input has a `|---` table and the destination is Slack.
-- **Code blocks.** Pandoc emits `<pre><code>` — pastes cleanly in Teams / Slack / Confluence. No extra flags.
+- **Code blocks.** Pandoc emits `<pre><code>` — pastes cleanly in Teams / Slack / Confluence, but only with `--no-highlight` (see the fallback table); the default highlighter wraps every token in a `<span>` and Teams collapses the block onto one line.
 - **No round-trip.** Pasting HTML clipboard content into a Markdown-only app (code editor, terminal) pastes raw HTML. Re-render with `-t markdown` if a round-trip is needed.
 - **Cheap to retry.** If wrong content lands on clipboard, just re-run with the corrected source — no destructive state.
 

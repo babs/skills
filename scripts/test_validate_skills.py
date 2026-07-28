@@ -395,6 +395,23 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("retired command form", r.stdout)
 
+    def test_bare_gfm_html_pandoc_form_fails(self) -> None:
+        # md2clip's --selftest returns before pandoc is reached, so dropping --wrap=none from the
+        # script (or from the copy-paste fallback table) is invisible to every other gate.
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(skill.read_text() + "\n| X11 | `pandoc -f gfm -t html | xclip -i` |\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("missing --no-highlight/--wrap=none", r.stdout)
+
+    def test_flagged_gfm_html_pandoc_form_passes(self) -> None:
+        skill = self.root / "skills" / "demo" / "SKILL.md"
+        skill.write_text(
+            skill.read_text() + "\n`pandoc -f gfm -t html --no-highlight --wrap=none | xclip -i`\n"
+        )
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_instrumentors_without_distro_fails(self) -> None:
         # The v1.9.0 defect: the canonical stack listed api/sdk/instrumentors/exporter but not the
         # distro, so opentelemetry-instrument found no configurator entry point and exported
