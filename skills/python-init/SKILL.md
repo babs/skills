@@ -2,10 +2,12 @@
 name: python-init
 description: Initialize a new Python FastAPI service — no database, no UI — or align an existing one to the standard. Use when starting a plain Python service or API, when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. If the app needs PostgreSQL or a React UI, use fullstack-init instead. Never scaffold a Python service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.2.1"
+version: "1.3.0"
 ---
 
 ## Context
+
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
 
 You are setting up or aligning a Python FastAPI project to the production standard. Follow the rules from `${CLAUDE_PLUGIN_ROOT}/rules/python.md` and `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md`; any shell script you write or touch (`run.sh`, hooks) follows `${CLAUDE_PLUGIN_ROOT}/rules/bash.md`.
 
@@ -105,7 +107,7 @@ markers = ["e2e: end-to-end tests requiring external services"]
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.9
+    rev: v0.16.0
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -131,7 +133,7 @@ repos:
 
   # No pyupgrade hook: ruff's UP rules (with --fix) already cover it.
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.1
+    rev: v2.3.0
     hooks:
       - id: mypy
         additional_dependencies: [pydantic]

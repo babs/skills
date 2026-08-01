@@ -85,6 +85,16 @@ This exists because "remember to keep them in sync" failed, repeatedly: `fastapi
 four different `useradd` invocations, two divergent Dockerfiles. Enforce constraints with CI, not with
 instructions — the same rule `rules/agents-md.md` gives you.
 
+## Version pins
+
+Pins are floors: every file that carries one tells the agent to check the current release and take it,
+never to downgrade a project to match. Keeping them fresh here is still worth it — a stale floor is a
+stale default for anyone who skips the check.
+
+Bumping one is all-or-nothing: `scripts/validate-skills.sh` fails when the same pin diverges across
+files (uv, python/node/golang/rust/postgres base images, distroless). Change every occurrence in one
+commit.
+
 ## Add or change a rule
 
 1. Create `rules/<topic>.md` with `paths:` frontmatter — the globs it applies to:

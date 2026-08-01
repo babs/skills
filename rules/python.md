@@ -4,6 +4,8 @@ paths: **/*.py
 
 # Python Project Guidelines
 
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
+
 - Use uv for dependency management
 - New projects: deps in `pyproject.toml [project.dependencies]` + `uv lock`, dev deps in `[dependency-groups]`
 - Existing projects with `requirements.txt`: keep as-is, use `uv pip`

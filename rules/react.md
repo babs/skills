@@ -4,6 +4,8 @@ paths: **/*.tsx,**/*.jsx,**/vite.config.*,**/package.json
 
 # React / Frontend Guidelines
 
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
+
 Reach for React only when the UI is genuinely interactive (live state, complex forms, realtime). A page
 of server-rendered HTML from the backend is not a defeat — it is one less build, one less lockfile, one
 less CVE feed.

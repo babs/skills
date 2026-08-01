@@ -7,10 +7,12 @@ description: >-
   Postgres", or asks to align an existing full-stack project. For an API with no UI and no database,
   use python-init instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep, AskUserQuestion
-version: "2.1.1"
+version: "2.2.0"
 ---
 
 ## Context
+
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
 
 Scaffold a full-stack app: FastAPI backend, PostgreSQL via async SQLAlchemy + plain-SQL migrations
 (babs/db_migrate), React SPA built into the same image and served by the backend.
@@ -184,7 +186,7 @@ values) per `rules/postgres.md` ("Two roles, not one"):
 ```yaml
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     # POSTGRES_USER/DB=<pkg> is load-bearing: the init SQL's `IN ROLE <pkg>` and both URLs
     # reference that role and database — the image's default `postgres` breaks all of them.
     environment:
