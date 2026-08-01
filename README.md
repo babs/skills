@@ -114,7 +114,7 @@ collides with another plugin.
 | `my-review` | `/my-review` | Thorough review of all project changes; auto-triggers before committing feature work |
 | `iterative-review` | `/iterative-review` | Iterate review + fix rounds on changed code until the tree is clean |
 | `swarm-review` | `/swarm-review` | Multi-perspective parallel review: one focused agent per angle (security, resiliency, quality, functional, docs, coherence, tests), then consolidated findings |
-| `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, and push with user validation; auto-triggers on any commit intent in interactive sessions |
+| `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, push, and MR/PR creation with user validation; auto-triggers on any commit intent in interactive sessions |
 
 ### Tools / helpers
 
