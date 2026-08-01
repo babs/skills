@@ -34,7 +34,8 @@ CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
 jq '.extraKnownMarketplaces["babs-skills"].autoUpdate = true' "$CFG" > "$CFG.tmp" && mv "$CFG.tmp" "$CFG"
 ```
 
-Manual fallback anytime: `claude plugin update babs`.
+Manual fallback anytime: `claude plugin update babs@babs-skills`. The `plugin@marketplace` form is
+required — a bare plugin name reports `Plugin "babs" not found`.
 
 ### skills.sh (any agent)
 

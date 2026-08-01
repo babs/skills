@@ -2,10 +2,12 @@
 name: dockerfile-init
 description: Generate a production Dockerfile or align an existing one to the standard. Use whenever creating or substantially reworking a Dockerfile — when the user says "write a Dockerfile", "containerize/dockerize this", or asks to align an existing Dockerfile to the standard. Never write a Dockerfile from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.4.0"
+version: "1.5.0"
 ---
 
 ## Context
+
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
 
 You are adding or aligning a Dockerfile to the production standard. Follow the rules from `${CLAUDE_PLUGIN_ROOT}/rules/dockerfile.md` and the language-specific rule file (`${CLAUDE_PLUGIN_ROOT}/rules/python.md`, `${CLAUDE_PLUGIN_ROOT}/rules/golang.md`, etc.).
 
@@ -115,14 +117,15 @@ Adapt `dist/`, build command, and entrypoint to the actual project.
 #### Rust
 
 ```dockerfile
-FROM rust:1.84-slim-bookworm AS builder
+FROM rust:1.97-slim-trixie AS builder
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo 'fn main(){}' > src/main.rs && cargo build --release && rm -rf src
 COPY . .
 RUN cargo build --release
 
-FROM gcr.io/distroless/cc-debian12:nonroot
+# cc-debian13 matches the trixie builder: a newer builder glibc than the runtime's breaks at exec.
+FROM gcr.io/distroless/cc-debian13:nonroot
 # ... ARGs, LABELs ...
 COPY --from=builder /src/target/release/app-name /app
 EXPOSE 8080

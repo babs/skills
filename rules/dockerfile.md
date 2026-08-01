@@ -4,6 +4,8 @@ paths: **/Dockerfile,**/Dockerfile.*,**/*.dockerfile
 
 # Dockerfile Guidelines
 
+> **Every version pin here is a floor, not a ceiling — check the current release and take it; never downgrade a project to match this file.**
+
 ## OCI Image Metadata
 
 Always include build-time metadata ARGs and OCI labels:
@@ -49,7 +51,7 @@ FROM python:3.14-slim-trixie AS builder
 # instead of silently taking the exit code of the last command in the pipe.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Pinned, never :latest — a mutable tag in the build toolchain is unauditable and unrollbackable.
-COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.0 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 # --locked, never --frozen: --frozen installs a stale lock silently, build stays green.
@@ -96,7 +98,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Pinned, never :latest — a mutable tag in the build toolchain is unauditable and unrollbackable.
 # Version tags, not @sha256 digests: a deliberate trade of immutability for a bump you can read
 # in a diff. Pin uniformity across the repo's files is enforced by scripts/validate-skills.sh.
-COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.0 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 # --no-install-project: the source is not here yet. Without this, uv builds and installs an EMPTY
@@ -161,7 +163,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w \
     -X 'main.ProjectURL=${PROJECT_URL}'" \
     -o /app "${PKG}"
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 
 ARG BUILD_TIMESTAMP="1970-01-01T00:00:00+00:00"
 ARG COMMIT_HASH="00000000-dirty"
