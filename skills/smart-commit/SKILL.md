@@ -1,8 +1,8 @@
 ---
 name: smart-commit
 description: Interactive branch, conventional commit, push, and MR/PR creation with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
-allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git fetch *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(gh pr checks *), Bash(gh pr merge *), Bash(pre-commit *)
-version: "1.3.1"
+allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git fetch *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(gh pr checks *), Bash(gh pr merge *), Bash(gh pr view *), Bash(pre-commit *)
+version: "1.4.0"
 ---
 
 ## Task
@@ -93,9 +93,32 @@ running pipeline — merge only on green.
      - **A check failed** → stop, leave the PR open, report the failure, do **not** merge.
      - **Checks pending** → wait for them: `gh pr checks <n> --watch`, then re-evaluate.
      - **No checks reported on the repo** → nothing to wait for, proceed straight to merge.
-  3. On all-green (or no checks): `gh pr merge <n> --merge --delete-branch` (default merge
-     method is a merge commit — **never squash**; honour a CLAUDE.md rule if one specifies a
-     different method). `--delete-branch` removes both the remote and the local branch.
+  3. On all-green (or no checks), merge and clean up as **separate commands, one per
+     invocation** — never `gh pr merge <n> --merge --delete-branch`, whose deletion flag reads
+     as destructive to a permission classifier and gets the whole merge blocked. Run each step
+     only if the previous one succeeded:
+
+     ```bash
+     gh pr merge <n> --merge                # merge commit — never squash
+     gh pr view <n> --json state -q .state  # expect MERGED before touching any branch
+     git switch <default-branch>            # still on <branch>: git refuses to delete a checked-out branch
+     git pull --ff-only origin <default-branch>
+     git branch -d <branch>
+     git push origin --delete <branch>
+     ```
+
+     Honour a CLAUDE.md rule if one specifies a different merge method. Run the cleanup only
+     once the merge is confirmed MERGED: deleting the source branch of an unmerged PR closes
+     it and drops the commits.
+  4. If the cleanup is refused or fails, the merge still stands — report the leftover branch
+     and the exact deletion command rather than retrying variants. One exception:
+     `remote ref does not exist` means the forge already deleted it (GitHub's "Automatically
+     delete head branches") — that is success, not a leftover.
+
+  Scope 3 authorizes the merge and the deletion against **your own** git gate, not against a
+  *tool-level* refusal: a denied command stays denied, is handed to the user verbatim, and is
+  never re-run in a disguised form or re-asserted as "the user approved this". The durable fix
+  for a recurring denial is a permission rule in the user's `settings.json`, theirs to add.
 
   The watch step can outlast the current turn; on resume, re-check status (`gh pr checks <n>`)
   before merging — the scope-3 authorization from step 5 still stands, no re-gate.
