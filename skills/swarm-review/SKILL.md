@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent, SendMessage
-version: "1.5.0"
+version: "1.5.1"
 ---
 
 # Swarm Review
@@ -31,7 +31,7 @@ If the scope is empty (no diff, no files), stop and tell the user — don't spaw
 
 Send **one** message with **seven** `Agent` tool uses in parallel. Use `subagent_type: "general-purpose"` (read-only investigation, full tool access for grep/read/web). Each prompt must be self-contained: the agent has no view of this conversation.
 
-Pass `run_in_background: false` on all seven. They still run concurrently, and each call returns its lens report as the tool result — the only collection path that cannot be confused with a status signal. Background agents report through notifications that arrive interleaved, out of order, and alongside idle/availability events that look like completion but carry no findings.
+Pass `run_in_background: false` on all seven — when the harness honours it, each call returns its lens report as the tool result, which is the cleanest collection path. **Do not assume it took.** A spawn result saying the agent is now running, or that it will receive instructions via its mailbox, means the call was backgrounded regardless and that report will arrive later as a message. Read each spawn result and know which mode you are in: background agents report through notifications that arrive interleaved, out of order, and alongside idle/availability events that look like completion but carry no findings. The collection ledger below is what makes either mode safe — it is not optional in the synchronous case either.
 
 For every agent, the prompt MUST include:
 
