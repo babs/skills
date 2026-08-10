@@ -105,15 +105,15 @@ collides with another plugin.
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
 | `spec-feature` | `/spec-feature` | Turn a feature request into `specs/NNN-slug.md` — problem, scope, out-of-scope, acceptance criteria, phases with a measurable DoD — before any code; auto-triggers when a feature is proposed |
-| `ship-feature` | `/ship-feature` | Human-paced quality loop against an approved spec: implement → tests → my-review → fix ALL findings → re-review until clean → swarm-review when large → tests + coverage → smart-commit |
-| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, and a human merge gate |
+| `ship-feature` | `/ship-feature` | Human-paced quality loop against an approved spec: implement → tests → my-review → fix ALL findings → re-review until clean → swarm-review when large → tests + coverage → smart-commit → self-grade |
+| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, a human merge gate, and a closing self-grade |
 
 ### Review → commit
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
-| `my-review` | `/my-review` | Thorough review of all project changes; auto-triggers before committing feature work |
-| `iterative-review` | `/iterative-review` | Iterate review + fix rounds on changed code until the tree is clean |
+| `my-review` | `/my-review` | Thorough review of all project changes; auto-triggers before committing feature work; self-grades the fixes it applied |
+| `iterative-review` | `/iterative-review` | Iterate review + fix rounds on changed code until the tree is clean; self-grades the fixes it applied |
 | `swarm-review` | `/swarm-review` | Multi-perspective parallel review: one focused agent per angle (security, resiliency, quality, functional, docs, coherence, tests), then consolidated findings |
 | `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, push, and MR/PR creation with user validation; auto-triggers on any commit intent in interactive sessions |
 

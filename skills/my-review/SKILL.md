@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.4.0"
+version: "1.5.0"
 ---
 
 ## Context
@@ -135,3 +135,32 @@ the fix scope, and asking here stalls its loop. The menu is for direct `/my-revi
 
 Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the
 printed review as the record of what was consciously waived.
+
+Once the selected scope is applied, close the turn with the self-grade below. A review that printed
+findings and applied nothing is not graded.
+
+<!-- block: self-grade -->
+## Self-grade — close the cycle with two letters
+
+Grade only once fixes have landed, and only for the cycle you own — invoked by another skill, hand
+your inputs back ungraded and let the caller grade. Two axes, never collapsed into one letter:
+
+- **Result** — the artifact: what is provably closed, what stays open. Cite the gate output, not an
+  impression.
+- **Process** — the record that produced it. Anchor it in the table; `+`/`-` nuance a band, they
+  never round up into the next one.
+
+| Letter | Process anchor |
+|---|---|
+| **A** | no round introduced a defect; what shipped was right when it was written |
+| **B** | a gate, a lens or the user caught once what care missed |
+| **C** | several rescue rounds — the fixes were the least reliable code in the branch |
+| **D** | a guard written here validated nothing, or unverified work was presented as verified |
+| **F** | the defect reached production or the user, and they are the ones who found it |
+
+**One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
+lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
+defect.
+
+Grade the record, not the last diff.
+<!-- /block -->

@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent, SendMessage
-version: "1.6.0"
+version: "1.7.0"
 ---
 
 # Swarm Review
@@ -138,6 +138,11 @@ back** — the caller owns the fix scope, and asking here stalls its loop.
 
 Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the printed
 report as the record of what was consciously waived.
+
+Hand the grade inputs to whoever applied the scope: which lens caught what the consolidator would have
+shipped, and any `NOT DELIVERED` lens. A missing lens is a hole in the record: say so on the Result
+line, and never grade Process above what the delivered lenses could see. Canonical:
+`skills/my-review/SKILL.md` ("Self-grade").
 
 ## Release the swarm
 
