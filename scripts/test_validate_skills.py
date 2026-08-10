@@ -457,7 +457,7 @@ class ValidateSkillsTest(unittest.TestCase):
     GOOD_TEMPLATE = (
         "### Critical\n\n"
         "∙ **C1.** {defect} `{file}:{line}` — {evidence}  \n"
-        "  → **Fix (T1|T2):** {the concrete change, one line}\n"
+        "  → **Fix (inst|class):** {the concrete change, one line}\n"
     )
 
     def _write_template(self, body: str) -> None:
@@ -479,6 +479,43 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1, "NBSP replaced by plain spaces must be caught")
         # The counter, not the generic message: mutating the hard break instead would also
         # print "typography lost" and the test would pass while checking nothing.
+        self.assertIn("/ 0 indented", r.stdout)
+
+    def test_renamed_tiers_stay_gated(self) -> None:
+        # The tier names are prose and have been renamed once; the guard must survive the next rename.
+        renamed = self.GOOD_TEMPLATE.replace("(inst|class)", "(foo|bar)")
+        self._write_template(renamed)
+        self.assertEqual(run(self.root).returncode, 0)
+        self._write_template(renamed.replace("\u00a0\u00a0", "  "))
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, "a renamed tier must not disarm the NBSP counter")
+        self.assertIn("/ 0 indented", r.stdout)
+
+    def test_prose_fix_example_is_not_counted_as_a_fix_line(self) -> None:
+        # The real templates close with a comment showing a fix line in prose, plain-space indented.
+        # Counting that as a fix line would make every intact template fail.
+        self._write_template(
+            self.GOOD_TEMPLATE
+            + "\n<!--\n  \u2192 **Fix (inst):** {change} \u2014 a `class` fix exists\n-->\n"
+        )
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_finding_without_a_fix_line_fails(self) -> None:
+        # The doctrine is "every finding names its fix"; a template that drops the fix line must not
+        # pass just because the counters agree at zero.
+        self._write_template("\n".join(self.GOOD_TEMPLATE.split("\n")[:-2]) + "\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, "a finding with no fix line must be caught")
+        self.assertIn("/ 0 indented", r.stdout)
+
+    def test_reworded_placeholder_stays_gated(self) -> None:
+        # The placeholder text is prose too; anchoring the counter on it would disarm the check.
+        reworded = self.GOOD_TEMPLATE.replace("{the concrete change, one line}", "{the fix, one line}")
+        self._write_template(reworded)
+        self.assertEqual(run(self.root).returncode, 0)
+        self._write_template(reworded.replace("\u00a0\u00a0", "  "))
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, "a reworded placeholder must not disarm the NBSP counter")
         self.assertIn("/ 0 indented", r.stdout)
 
     def test_template_without_the_glyph_is_not_checked(self) -> None:

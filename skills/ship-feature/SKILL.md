@@ -7,7 +7,7 @@ description: >-
   "ship it", or asks to implement work that has a file in specs/. This is the human-paced loop; for
   fully autonomous multi-phase builds from a handoff doc, use implement-loop instead.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.2.1"
+version: "1.3.0"
 ---
 
 # Ship a feature — the quality loop
@@ -102,10 +102,11 @@ Every finding gets one of exactly two outcomes:
 **A fix ships with the test that fails without it.** Write the fix, then *delete it* and watch the test
 go red. If it stays green, you have written decoration and the bug will come back.
 
-**Fix the class, not the instance, when you can.** Reviews grade fixes T0/T1/T2 (T0 = a promise, "keep
-these in sync"; T1 = repairs this occurrence; T2 = makes the defect *un-shippable* — a test, a lint
-rule, a CI gate, a type, a deleted duplicate). A T0 is not a fix; it is the bug with better manners.
-Prefer the T2. If you settle for the T1, say so out loud and name what the T2 would have cost.
+**Fix the class, not the instance, when you can.** Reviews grade fixes `deco`/`inst`/`class` (`deco` = a
+promise, "keep these in sync"; `inst` = repairs this occurrence; `class` = makes the defect
+*un-shippable* — a test, a lint rule, a CI gate, a type, a deleted duplicate). A `deco` is not a fix; it
+is the bug with better manners. Prefer the `class` fix. If you settle for the `inst`, say so out loud
+and name what the `class` fix would have cost.
 
 ## 6. Review again — `my-review`
 
