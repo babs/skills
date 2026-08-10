@@ -9,7 +9,7 @@ description: >-
   "implement loop", "run the loop", "work through the plan/handoff autonomously", or hands a
   handoff/plan/ticket and asks you to build it end-to-end.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.2.0"
+version: "1.3.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -105,6 +105,7 @@ Next slice / next phase.
 ## 2. Definition of done (gate between phases)
 Do not advance until the current phase's **measurable** DoD is met: structural guard satisfied,
 behavioral guard passing, suite + coverage green. State the DoD check explicitly when closing a phase.
+Self-grade the phase per the block below; the loop-wide grade at §7 is a separate one.
 
 ## 3. Escalation — stop and ASK, do not guess
 Pause and ask the user at a genuine **design fork**, not for routine choices:
@@ -148,3 +149,31 @@ recorded conscious waiver, both guards pass on the final state, and the MR is pr
 review. Report: phases done, final guard/coverage state, the unaddressed/waived list, and the MR link.
 If an isolated worktree was used, leave it in place until the user confirms the merge, then propose
 its removal (`git worktree remove <path>`) as a gated step — never auto-remove unmerged work.
+
+Close the report with the self-grade below, covering the whole loop rather than the final phase.
+
+<!-- include: skills/my-review/SKILL.md#self-grade -->
+## Self-grade — close the cycle with two letters
+
+Grade only once fixes have landed, and only for the cycle you own — invoked by another skill, hand
+your inputs back ungraded and let the caller grade. Two axes, never collapsed into one letter:
+
+- **Result** — the artifact: what is provably closed, what stays open. Cite the gate output, not an
+  impression.
+- **Process** — the record that produced it. Anchor it in the table; `+`/`-` nuance a band, they
+  never round up into the next one.
+
+| Letter | Process anchor |
+|---|---|
+| **A** | no round introduced a defect; what shipped was right when it was written |
+| **B** | a gate, a lens or the user caught once what care missed |
+| **C** | several rescue rounds — the fixes were the least reliable code in the branch |
+| **D** | a guard written here validated nothing, or unverified work was presented as verified |
+| **F** | the defect reached production or the user, and they are the ones who found it |
+
+**One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
+lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
+defect.
+
+Grade the record, not the last diff.
+<!-- /include -->

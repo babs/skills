@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 ## Task
@@ -147,4 +147,34 @@ run-*.sh`, `chown before USER or the writable dir breaks`). Flag both directions
 file, and an undocumented gotcha. Density is part of it — one line unless the constraint needs two; a
 six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
 statement below it.
+<!-- /include -->
+
+At **loop exit** — not per round — the self-grade below closes the loop. The record it grades is the whole
+loop: every round that introduced a defect counts against the process letter, including rounds whose
+damage a later round repaired. An exit with nothing landed reports the escalation instead — no grade.
+
+<!-- include: skills/my-review/SKILL.md#self-grade -->
+## Self-grade — close the cycle with two letters
+
+Grade only once fixes have landed, and only for the cycle you own — invoked by another skill, hand
+your inputs back ungraded and let the caller grade. Two axes, never collapsed into one letter:
+
+- **Result** — the artifact: what is provably closed, what stays open. Cite the gate output, not an
+  impression.
+- **Process** — the record that produced it. Anchor it in the table; `+`/`-` nuance a band, they
+  never round up into the next one.
+
+| Letter | Process anchor |
+|---|---|
+| **A** | no round introduced a defect; what shipped was right when it was written |
+| **B** | a gate, a lens or the user caught once what care missed |
+| **C** | several rescue rounds — the fixes were the least reliable code in the branch |
+| **D** | a guard written here validated nothing, or unverified work was presented as verified |
+| **F** | the defect reached production or the user, and they are the ones who found it |
+
+**One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
+lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
+defect.
+
+Grade the record, not the last diff.
 <!-- /include -->

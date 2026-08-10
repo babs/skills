@@ -7,7 +7,7 @@ description: >-
   "ship it", or asks to implement work that has a file in specs/. This is the human-paced loop; for
   fully autonomous multi-phase builds from a handoff doc, use implement-loop instead.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 # Ship a feature — the quality loop
@@ -168,3 +168,32 @@ Repeat for each phase. When all phases are done:
 Report per phase: what was built, tests added, review rounds and what they found, the coverage delta,
 the DoD verdict, and the commit. List every waived finding explicitly — the user decides whether a
 waiver is acceptable, not you.
+
+Self-grade the phase per the block below. The process letter covers the phase's whole record —
+the review rounds included, not just the state the last commit left behind.
+
+<!-- include: skills/my-review/SKILL.md#self-grade -->
+## Self-grade — close the cycle with two letters
+
+Grade only once fixes have landed, and only for the cycle you own — invoked by another skill, hand
+your inputs back ungraded and let the caller grade. Two axes, never collapsed into one letter:
+
+- **Result** — the artifact: what is provably closed, what stays open. Cite the gate output, not an
+  impression.
+- **Process** — the record that produced it. Anchor it in the table; `+`/`-` nuance a band, they
+  never round up into the next one.
+
+| Letter | Process anchor |
+|---|---|
+| **A** | no round introduced a defect; what shipped was right when it was written |
+| **B** | a gate, a lens or the user caught once what care missed |
+| **C** | several rescue rounds — the fixes were the least reliable code in the branch |
+| **D** | a guard written here validated nothing, or unverified work was presented as verified |
+| **F** | the defect reached production or the user, and they are the ones who found it |
+
+**One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
+lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
+defect.
+
+Grade the record, not the last diff.
+<!-- /include -->
