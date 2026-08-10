@@ -2,7 +2,7 @@
 name: swarm-review
 description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent, SendMessage
-version: "1.5.1"
+version: "1.6.0"
 ---
 
 # Swarm Review
@@ -24,6 +24,7 @@ Determine the scope **before** spawning agents:
    - find the base: first of `origin/develop`, `origin/trunk`, `origin/main`, `origin/master` that exists via `git rev-parse --verify`
    - compute `git merge-base <base> HEAD`, then `git diff <merge-base>...HEAD` plus uncommitted (`git diff HEAD` and `git status --porcelain`)
 3. Capture the **exact diff text**, the **list of changed files**, and a **one-paragraph change summary** (read commit messages + skim diff). All three are passed verbatim to every subagent so they share context without re-deriving it.
+4. The unit of review is the **feature**, not the diff at hand: when the user narrows the scope (one commit, a path subset) on the checked-out branch, also resolve `<merge-base>...HEAD` and pass it as feature context. For a PR scope take the PR's own base — `gh pr view <n> --json baseRefName` — never the local `HEAD`, which is a different branch. Canonical: `skills/my-review/SKILL.md` ("Scope on a feature branch").
 
 If the scope is empty (no diff, no files), stop and tell the user — don't spawn agents over nothing.
 
@@ -37,9 +38,9 @@ For every agent, the prompt MUST include:
 
 - **Role line** — e.g. *"You are the security reviewer in a multi-agent swarm. Stay strictly within your lens; other agents cover the rest."*
 - **Stance line** — the lens-specific operating assumption from the table below. This is **not** a persona ("act grumpy"); it's a frame that biases what the agent prioritises without distorting tone. Include it verbatim in the prompt.
-- **Scope block** — the diff, the changed-files list, and the change summary from the step above.
+- **Scope block** — the diff, the changed-files list, the change summary, and the feature-wide context from the step above, with the instruction: *"review the feature as a whole, not the hunk; a defect an earlier commit of the branch introduced is in scope, and every fix must be right for the whole feature."*
 - **Lens checklist** — the specific items from the table below for that perspective.
-- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` and a tiered fix line (`→ **Fix (T1|T2):**`, canonical: `skills/my-review/SKILL.md` ("The fix bar")) for every finding, plus a **complexity index** for the fix: `cx:S` (localized — one line / one file, no design impact), `cx:M` (multi-site, or needs a new test / small refactor), `cx:L` (design-level or cross-cutting change). Severity says how much it hurts; complexity says how much it costs to fix — report both, never let one influence the other. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
+- **Output contract** — must return findings using the template in `template.md` (severity-graded: Critical / High / Medium / Low / Positive), with `file:line` and a tiered fix line (`→ **Fix (inst|class):**`, canonical: `skills/my-review/SKILL.md` ("The fix bar")) for every finding, plus a **complexity index** for the fix: `cx:S` (localized — one line / one file, no design impact), `cx:M` (multi-site, or needs a new test / small refactor), `cx:L` (design-level or cross-cutting change). Severity says how much it hurts; complexity says how much it costs to fix — report both, never let one influence the other. No prose preamble. Do **not** number findings (the consolidator assigns IDs after dedup).
 - **Delivery channel** — *"Your report is your final message. If you are running in the background, deliver it with `SendMessage` to `main` — plain output does not reach the consolidator. If you did not run the analysis, say exactly that; a stated 'did not run' beats a report reconstructed from memory."*
 - **Boundary reminder** — *"If a finding sits on the border of another lens, mention it once and tag `[overlap:<lens>]`; do not expand into that lens."*
 - **Execution mandate** — *"Prefer running over reading. If the code can be executed, execute it: run the
@@ -88,7 +89,7 @@ be `ship` while coverage is incomplete. Say plainly which lenses are missing whe
 
 Once the ledger is closed:
 
-1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens and complexity index, e.g. `[security] cx:S SQL string built via concatenation src/db.py:42` followed by its `→ **Fix (T1|T2):**` line.
+1. **Merge** findings into a single report grouped by severity (Critical → Low → Positive), each finding tagged with its source lens and complexity index, e.g. `[security] cx:S SQL string built via concatenation src/db.py:42` followed by its `→ **Fix (inst|class):**` line.
 2. **Deduplicate** — if two lenses raised the same `file:line` with the same root cause, keep one entry and list both lens tags.
 3. **Assign stable IDs** during consolidation (`C1, C2, … H1, H2, …`) so the user can reference findings in follow-up (`"apply C1 and H3"`). Subagents do **not** number their own findings — numbering is the consolidator's job after dedup.
 4. **Question a lens rather than guess.** Every agent stays addressable by name after its report lands

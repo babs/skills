@@ -11,7 +11,7 @@
 ### 🔴 Critical (must fix — blocks merge)
 
 ∙ **C1.** `[lens]` `cx:{S|M|L}` {defect, one sentence} `{file}:{line}` — {evidence, or `[unverified]`}  
-  → **Fix (T1|T2):** {the concrete change, one line}
+  → **Fix (inst|class):** {the concrete change, one line}
 
 <!-- numbered C1, C2, ...; IDs are stable so the user can reference them in follow-ups. Delete unused placeholder rows, or replace whole section with "None." -->
 
@@ -20,21 +20,21 @@
 ### 🟠 High (should fix before merge)
 
 ∙ **H1.** `[lens]` `cx:{S|M|L}` {defect, one sentence} `{file}:{line}` — {evidence, or `[unverified]`}  
-  → **Fix (T1|T2):** {the concrete change, one line}
+  → **Fix (inst|class):** {the concrete change, one line}
 
 ---
 
 ### 🟡 Medium (fix soon)
 
 ∙ **M1.** `[lens]` `cx:{S|M|L}` {defect, one sentence} `{file}:{line}`  
-  → **Fix (T1|T2):** {the concrete change, one line}
+  → **Fix (inst|class):** {the concrete change, one line}
 
 ---
 
 ### 🔵 Low (nice to have)
 
 ∙ **L1.** `[lens]` `cx:{S|M|L}` {defect, one sentence} `{file}:{line}`  
-  → **Fix (T1|T2):** {the concrete change, one line}
+  → **Fix (inst|class):** {the concrete change, one line}
 
 ---
 
@@ -63,8 +63,8 @@ reads this report, so the glyph is placed by hand, and two of the three characte
      continuation, and the fix loses its indent.
 Every finding carries a fix line. Two explicit exceptions:
   → **Fix:** none — trade-off owned: {why living with it is the decision}
-  → **Fix (T1):** {change} — T2 exists ({what it is}) but costs {cost}; overrule me if you disagree
-A finding whose only fix is T0 (document it, remember it, be careful) is not a finding: either find the
-T1/T2 or drop it.
+  → **Fix (inst):** {change} — a `class` fix exists ({what it is}) but costs {cost}; overrule me if you disagree
+A finding whose only fix is `deco` (document it, remember it, be careful) is not a finding: either find the
+`inst`/`class` fix or drop it.
 -->
 <!-- /include -->

@@ -9,7 +9,8 @@
 #      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
 #      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest),
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
-#   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent).
+#   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent)
+#      and every finding still carries a fix line.
 # Sources scanned for 2/2b: skills/**.md, rules/**.md, CONTRIBUTING.md.
 # Exit 0 = clean, 1 = violations found.
 set -euo pipefail
@@ -262,12 +263,14 @@ while IFS= read -r -d '' tpl; do
   findings="$(grep -c "^${dot} \*\*" "$tpl" || true)"
   [[ "$findings" -eq 0 ]] && continue
   breaks="$(grep -c "^${dot} \*\*.*  $" "$tpl" || true)"
-  fixes="$(grep -c "→ \*\*Fix (T1|T2):" "$tpl" || true)"
-  indented="$(grep -c "^${nbsp}${nbsp}→ \*\*Fix (T1|T2):" "$tpl" || true)"
-  if [[ "$findings" != "$breaks" || "$fixes" != "$indented" ]]; then
+  # Compared against the finding count, never against the fix line's own prose: two counters both
+  # anchored on wording drop to 0 together on a rename, and 0 == 0 passes. The fix line shown in
+  # each template's trailing comment stays plain-space indented, or it counts as a finding's fix.
+  fixes="$(grep -c "^${nbsp}${nbsp}→ \*\*Fix" "$tpl" || true)"
+  if [[ "$findings" != "$breaks" || "$findings" != "$fixes" ]]; then
     echo "ERROR: ${tpl#"$ROOT/"}: finding typography lost (${findings} finding(s) / ${breaks} hard"
-    echo "  break(s), ${fixes} fix line(s) / ${indented} indented) — restore the trailing double"
-    echo "  space and the two NBSP; the report renders as one run-on line without them."
+    echo "  break(s) / ${fixes} indented fix line(s)) — every finding needs the trailing double"
+    echo "  space and a fix line indented with two NBSP, or the report runs on one line."
     rc=1
   fi
 done < <(find "$ROOT/skills" -name 'template.md' -print0)

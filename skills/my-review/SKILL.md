@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 ## Context
@@ -31,6 +31,19 @@ Review as if this code will run in production under heavy load at 3 AM with no o
 - **Pre-commit hooks**: if the project defines pre-commit hooks (or equivalent lint/format gates), run them on the changes and report any failure as a finding
 
 <!-- block: review-doctrine -->
+## Scope on a feature branch — the diff is the entry point, not the boundary
+
+On a feature branch the unit of review is the **feature**, not the diff in front of you: resolve the
+base (`git merge-base <base> HEAD`, `<base>` = first existing of `origin/develop`, `origin/trunk`,
+`origin/main`, `origin/master`), read `<base>...HEAD` plus uncommitted work as one unit, and cite the
+base ref in the report.
+
+- Defects an earlier commit of the branch introduced are in scope, even when today's diff does not
+  touch them.
+- Judge every fix against the whole feature: repairing the newest hunk while an earlier commit keeps
+  the same broken shape is an `inst` fix where one feature-wide `class` fix exists.
+- The feature is the boundary — unrelated pre-existing repo debt stays out.
+
 ## The evidence bar — reading is not verification
 
 A Critical or High finding must carry **evidence you produced**, not an argument you constructed:
@@ -52,15 +65,15 @@ Every fix you propose is one of three tiers. Name the tier.
 
 | Tier | What it is | Verdict |
 |---|---|---|
-| **T0 — decoration** | A promise: *"keep them in sync"*, *"remember to"*, *"document that"*, *"be careful"*, *"reviewers should check"* | **Never propose alone.** It is the bug wearing a hat |
-| **T1 — instance fix** | Repairs this occurrence | Acceptable when no T2 exists, or T2 costs more than the bug |
-| **T2 — class fix** | Makes the defect **un-shippable**: a test that fails without it, a lint rule, a CI gate, a type, a schema, an invariant, a deleted duplicate | **Prefer this whenever it exists and is cheap** |
+| **`deco` — decoration** | A promise: *"keep them in sync"*, *"remember to"*, *"document that"*, *"be careful"*, *"reviewers should check"* | **Never propose alone.** It is the bug wearing a hat |
+| **`inst` — instance fix** | Repairs this occurrence | Acceptable when no `class` fix exists, or it costs more than the bug |
+| **`class` — class fix** | Makes the defect **un-shippable**: a test that fails without it, a lint rule, a CI gate, a type, a schema, an invariant, a deleted duplicate | **Prefer this whenever it exists and is cheap** |
 
-If you propose T1 where a T2 exists, **say so explicitly and justify it** — name the cost of the T2 and
+If you propose `inst` where a `class` fix exists, **say so explicitly and justify it** — name its cost and
 why it is not worth paying today. Let the human overrule you. Quietly choosing the cheap path and
 presenting it as the fix is the failure this bar exists to prevent.
 
-**The tells of a T0 masquerading as a fix**: it adds words to a document and changes no behaviour; it
+**The tells of a `deco` masquerading as a fix**: it adds words to a document and changes no behaviour; it
 relies on a future human remembering; it would not have caught the bug that just happened. Ask of every
 fix: *"if this had been in place last week, would the defect have been impossible — or merely
 discouraged?"*
@@ -87,8 +100,9 @@ inside a tool call, never condensed into the menu. Then move to the fix-scope st
 **Every finding names its fix, with its tier.** A defect without a proposed change is half a review: the
 reader has to re-derive the remedy you already worked out. One line, concrete enough to act on — the
 file and the change, not "improve error handling". Two explicit exceptions: a trade-off you consciously
-own (`Fix: none — trade-off owned: …`) and a T1 you chose over an existing T2 (name the T2 and its cost,
-per the fix bar). A finding whose only fix is T0 is not a finding — find the T1/T2 or drop it.
+own (`Fix: none — trade-off owned: …`) and an `inst` you chose over an existing `class` fix (name it
+and its cost, per the fix bar). A finding whose only fix is `deco` is not a finding — find the
+`inst`/`class` or drop it.
 
 **Be word-scarce.**
 
