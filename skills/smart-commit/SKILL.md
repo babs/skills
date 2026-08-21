@@ -1,15 +1,15 @@
 ---
 name: smart-commit
 description: Interactive branch, conventional commit, push, and MR/PR creation with user validation. Use for EVERY git commit in interactive sessions — whenever you are about to run `git commit`, the user says "commit", "commit this", "commit and push", "save this work", or a task ends with changes worth committing. Never run `git commit` directly; invoke this skill instead. In headless/non-interactive runs, commit only under an explicit standing authorization.
-allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git fetch *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(gh pr checks *), Bash(gh pr merge *), Bash(gh pr view *), Bash(pre-commit *)
-version: "1.4.0"
+allowed-tools: Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git branch *), Bash(git checkout *), Bash(git switch *), Bash(git stash *), Bash(git pull *), Bash(git fetch *), Bash(git remote *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(gh pr create *), Bash(gh pr checks *), Bash(gh pr merge *), Bash(gh pr view *), Bash(pre-commit *), Bash(echo *)
+version: "1.5.0"
 ---
 
 ## Task
 
 Prepare and execute a clean git workflow: branch, commit, and optionally push -- with user validation at every decision point.
 
-> **Review first.** For feature work, run a review pass and address (or consciously waive) its findings *before* committing — `/my-review` for a single thorough pass, `/iterative-review` to loop review+fix until clean, or `/swarm-review` for large/risk-sensitive changes. This skill assumes the diff has already been reviewed; it does not review code itself.
+> **Review first.** For feature work, run a review pass and address (or consciously waive) its findings *before* committing — `/my-review` for a single thorough pass, `/iterative-review` to loop review+fix until clean, or `/swarm-review` for large/risk-sensitive changes. This skill does not review code itself; step 4b checks that the review covered the diff being committed rather than an earlier one.
 
 ## Steps
 
@@ -53,6 +53,19 @@ Prepare and execute a clean git workflow: branch, commit, and optionally push --
    **A red gate blocks the commit.** Fix the root cause. Committing over a failing gate needs the user's explicit authorization *in the same turn*, with the reason surfaced in the step-5 proposal. "The failure is unrelated to my diff" is a claim to verify (stash, re-run), not a licence to proceed.
 
    When the project is set up for coverage (e.g. `pytest-cov`, `go test -cover`, `nyc`/`c8`), run it too, report the figure, and flag functional code paths in the diff left uncovered.
+
+4b. **Review-coverage gate — the review must cover THIS diff, not an earlier one.** "It was reviewed" is a claim about a tree, and the tree moves: a review, then one more fix, then a commit, and what ships was never reviewed. Recompute the digest of what is about to be committed and compare it to the one the review printed (same command the review skills run, untracked files included — see `my-review`'s `reviewed-tree` block):
+
+    ```bash
+    echo "Reviewed-tree: $(git rev-parse --short HEAD):$( { git diff HEAD; git ls-files --others --exclude-standard -z | while IFS= read -rd '' f; do git diff --no-index /dev/null "$f"; done; } | git hash-object --stdin | cut -c1-12)"
+    ```
+
+    - **Match** — say so in the step-5 proposal, quoting the digest, and proceed.
+    - **Mismatch, or no digest to compare** — the review does not cover this commit. Say which, and re-run the review before proposing anything. Do not paper over it with "the change since is trivial": whether a fix is trivial is exactly what a review decides, and every defect this gate exists to catch was introduced by a change someone judged trivial.
+
+    The digest describes the whole tree while the commit stages named files, so the commit may be a **subset** of what was reviewed — never a superset. Staging fewer files is fine; anything not in the reviewed tree is not covered.
+
+    Skip it only for changes that are not feature work (a version bump, a formatter pass, a doc typo) — and name the exemption rather than leaving the gate silently unrun.
 5. **Ask for validation**: present the proposed branch name (or current branch if staying), the commit message, and any PR/MR metadata resolved from your agent instructions (see "PR/MR metadata" below). Then ask the user to approve, adjust, or choose scope as a plain-text numbered list: [1) branch+commit+push / 2) branch+commit+push + open PR/MR / 3) branch+commit+push + open PR/MR + **auto-merge, which deletes the source branch (remote, and local on GitHub) on merge** / 4) branch+commit+push + open **draft** PR/MR / 5) branch+commit only / 6) adjust]. The create-PR/MR mechanism is resolved from the remote's forge (`git remote get-url origin`): **GitHub** (`github.com`) → `gh pr create` (`--draft` for draft); **GitLab** (`gitlab.com`, or a self-hosted host named as GitLab in your agent instructions or containing `gitlab`) → `git push` with `-o merge_request.create` (`-o merge_request.draft` for draft); **any other forge** → push plainly and relay the create-PR/MR link printed in the push output, metadata filled in the browser — do not guess push options the forge may not support. Scope 3 (auto-merge) is detailed in "Auto-merge" below — choosing it **authorizes the eventual merge and source-branch deletion** for this run, so no fresh git gate is needed when they later fire. This is the approval gate for the chosen scope -- do not re-prompt for the operations covered by that scope in step 6.
 
    **Out-of-scope operations require a fresh per-turn gate.** If after step 6 the conversation expands to operations beyond the originally-approved scope -- force-push, `commit --amend`, tag creation, tag push, PR/MR merge, branch deletion, `git reset` -- those each need their own explicit "yes/go/proceed" in the same turn they run, per your global git-mutation rule (if your agent instructions define one). The step-5 gate does not cover them. **Exception:** when scope 3 (auto-merge) was chosen, the PR/MR merge and its source-branch deletion *are* the approved scope — they fire without a fresh gate, per the "Auto-merge" section.
@@ -70,8 +83,9 @@ Independently of any matched rule, set target/base and title explicitly when ope
 
 - **target/base** = the resolved default branch (`master`/`main`), not whatever the remote's `HEAD` happens to be — GitLab `-o merge_request.target=<default-branch>`, GitHub `gh pr create --base <default-branch>`.
 - **Title and description describe the whole PR/MR, not one commit.** Count what the branch being pushed will contain. A fresh branch cut off the mainline (step-2 dance) carries exactly the one commit about to be created — no probe needed. When staying on an existing branch, refresh the remote-tracking ref (`git fetch origin <default-branch>` — it is only as fresh as the last fetch), probe `git log --oneline --no-merges origin/<default-branch>..HEAD`, and add the commit about to be created.
-  - **Single commit** — title = the commit subject, suffixed with the issue/ticket reference in brackets when one is in play (e.g. `feat(auth): add oauth login endpoint [PROJ-123]`): GitLab `-o merge_request.title=<…>`; GitHub `gh pr create --fill`, plus an explicit `--title <…>` when a reference suffix is in play (explicit flags override the autofill). No synthesized description — it derives from the commit.
+  - **Single commit** — title = the commit subject, suffixed with the issue/ticket reference in brackets when one is in play (e.g. `feat(auth): add oauth login endpoint [PROJ-123]`): GitLab `-o merge_request.title=<…>`; GitHub `gh pr create --fill` when the commit is subject-only, plus an explicit `--title <…>` when a reference suffix is in play (explicit flags override the autofill). A commit **with a body** is not autofilled: the 72-col wrap would render as ragged hard breaks (see below) — GitHub: pass explicit `--title <…>` (the commit subject) and `--body <…>` with the de-wrapped body (`--body` without `--title` fails non-interactively); GitLab: add `-o merge_request.description=<…>` de-wrapped, one line with `<br>` breaks under the same shell-quoting constraint as below.
   - **Multiple commits** — never reuse the latest commit's subject as the title: it describes only itself, and forge defaults would likewise fill the description from a single commit. Synthesize a title covering the branch's aggregate change (conventional-commit style, same reference-suffix rule) and a description summarizing all commits; surface both in the step-5 proposal alongside the commit message. GitLab: `-o merge_request.description=<summary>` — push options reject LF characters, so keep it on one line with `<br>` breaks (GitLab renders it as markdown) and shell-quote the value (unquoted, `<br>` is parsed as a shell redirection). GitHub: explicit `--title <…> --body <…>` — `--body` accepts real newlines, so write the summary as a proper markdown bullet list.
+  - **Never hard-wrap PR/MR description text.** Forges render descriptions as comment-style markdown where a single newline becomes a hard break, so a 72-col wrap displays as ragged mid-sentence breaks. One line per bullet or paragraph; the 72-col convention applies to the commit message only.
 
 ## Auto-merge (scope 3)
 

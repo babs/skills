@@ -1,13 +1,13 @@
 ---
 name: ship-feature
 description: >-
-  Implement an approved spec phase by phase with the full quality loop — implement → write tests → run
-  tests → my-review → fix ALL findings → re-review until clean → swarm-review for large features →
-  tests + coverage → smart-commit. Use when the user says "implement the spec", "build feature NNN",
-  "ship it", or asks to implement work that has a file in specs/. This is the human-paced loop; for
-  fully autonomous multi-phase builds from a handoff doc, use implement-loop instead.
+  Use when the user says "implement the spec", "build feature NNN", "ship it", or asks to implement
+  work that has a file in specs/ and stays in the loop. Implements the approved spec phase by phase
+  with the full quality loop (tests, review until clean, swarm-review for large features,
+  smart-commit), human-paced. If the user asks for autonomous, unattended, or AFK execution — or
+  hands the work and leaves — use implement-loop instead, even when a specs/ file exists.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.4.0"
+version: "1.4.1"
 ---
 
 # Ship a feature — the quality loop

@@ -1,8 +1,8 @@
 ---
 name: swarm-review
-description: Multi-perspective parallel review of changes by dispatching one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage), then consolidating findings. Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review`.
-allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Read, Grep, Glob, Agent, SendMessage
-version: "1.7.0"
+description: Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review` — or when a large or cross-cutting change warrants independent review from several angles at once before commit. Dispatches one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage) and consolidates findings.
+allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Bash(echo *), Read, Grep, Glob, Agent, SendMessage
+version: "1.8.0"
 ---
 
 # Swarm Review
@@ -99,7 +99,24 @@ Once the ledger is closed:
    it. Never publish a finding you do not believe — resolve it or drop it.
 5. **Top of report**: 2-3 sentence executive summary + a one-line verdict (`ship`, `ship-with-followups`, `block`).
 6. **Bottom of report**: per-lens micro-summary (one line each) so the user can see whether any lens came back clean, noisy, or `NOT DELIVERED`.
-7. Use the format in [template.md](template.md).
+7. Stamp what was reviewed, so `smart-commit`'s step-4b gate can tell this review from one that predates later edits.
+8. Use the format in [template.md](template.md).
+
+<!-- include: skills/my-review/SKILL.md#reviewed-tree -->
+**Stamp what was reviewed.** End the report with the digest of the exact tree the findings describe:
+
+```bash
+echo "Reviewed-tree: $(git rev-parse --short HEAD):$( { git diff HEAD; git ls-files --others --exclude-standard -z | while IFS= read -rd '' f; do git diff --no-index /dev/null "$f"; done; } | git hash-object --stdin | cut -c1-12)"
+```
+
+Untracked files are folded in deliberately: `git diff HEAD` alone does not see them, so a new module
+or a new test added after the review would leave the digest unchanged and pass the gate unreviewed —
+and new files are most of what a feature adds.
+
+Print the line verbatim. `smart-commit` recomputes it before committing, so a review followed by more
+edits stops being mistakable for a review of what ships. Re-emit it after applying a fix scope: the
+tree moved, so the old digest is stale by construction.
+<!-- /include -->
 
 ## Report before acting (mandatory)
 
