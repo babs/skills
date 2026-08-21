@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.4.0"
+version: "1.5.0"
 ---
 
 ## Task
@@ -147,6 +147,25 @@ run-*.sh`, `chown before USER or the writable dir breaks`). Flag both directions
 file, and an undocumented gotcha. Density is part of it — one line unless the constraint needs two; a
 six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
 statement below it.
+<!-- /include -->
+
+At loop exit, stamp the tree the clean state describes, so `smart-commit`'s step-4b gate can tell this
+review from one that predates later edits.
+
+<!-- include: skills/my-review/SKILL.md#reviewed-tree -->
+**Stamp what was reviewed.** End the report with the digest of the exact tree the findings describe:
+
+```bash
+echo "Reviewed-tree: $(git rev-parse --short HEAD):$( { git diff HEAD; git ls-files --others --exclude-standard -z | while IFS= read -rd '' f; do git diff --no-index /dev/null "$f"; done; } | git hash-object --stdin | cut -c1-12)"
+```
+
+Untracked files are folded in deliberately: `git diff HEAD` alone does not see them, so a new module
+or a new test added after the review would leave the digest unchanged and pass the gate unreviewed —
+and new files are most of what a feature adds.
+
+Print the line verbatim. `smart-commit` recomputes it before committing, so a review followed by more
+edits stops being mistakable for a review of what ships. Re-emit it after applying a fix scope: the
+tree moved, so the old digest is stale by construction.
 <!-- /include -->
 
 At **loop exit** — not per round — the self-grade below closes the loop. The record it grades is the whole

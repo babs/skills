@@ -106,7 +106,7 @@ collides with another plugin.
 |-------|-----------|-------------|
 | `spec-feature` | `/spec-feature` | Turn a feature request into `specs/NNN-slug.md` — problem, scope, out-of-scope, acceptance criteria, phases with a measurable DoD — before any code; auto-triggers when a feature is proposed |
 | `ship-feature` | `/ship-feature` | Human-paced quality loop against an approved spec: implement → tests → my-review → fix ALL findings → re-review until clean → swarm-review when large → tests + coverage → smart-commit → self-grade |
-| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, a human merge gate, and a closing self-grade |
+| `implement-loop` | `/implement-loop` | Autonomous multi-phase build loop from a handoff/plan/ticket/spec: dev → test + dual guards → review → address (edge cases) → coherence → commit → repeat, with per-phase DoD, front-loaded questions, optional isolated git worktree, escalation on design forks, a human merge gate, and a closing self-grade |
 
 ### Review → commit
 

@@ -1,8 +1,8 @@
 ---
 name: privatebin
-description: Upload text or a file to a PrivateBin instance via the gearnode/privatebin CLI and emit one JSON object with both the shareable view URL and the delete URL. Use when the user asks to "paste to privatebin", "share via privatebin", "create a privatebin paste", or wants a quick self-destructing paste with revocation handle.
+description: Use when the user asks to "paste to privatebin", "share via privatebin", "create a privatebin paste", or wants a quick self-destructing paste with a revocation handle. Uploads text or a file to a PrivateBin instance and returns one JSON object with the shareable view URL and the delete URL.
 allowed-tools: Bash(privatebin *), Bash(ubi *), Bash(jq *), Bash(command *), Bash(which *)
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 ## Task

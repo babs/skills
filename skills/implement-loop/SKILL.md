@@ -1,15 +1,13 @@
 ---
 name: implement-loop
 description: >-
-  Drive a multi-phase implementation autonomously from a handoff doc, plan, or ticket using a
-  disciplined dev loop: dev → test + dual guards → review → address findings (edge cases, not happy
-  path) → end-to-end coherence check → commit on the feature branch → repeat. Enforces measurable
-  per-phase definition-of-done, stop-and-ask escalation on design forks, a human checkpoint at
-  merge, and a living unaddressed-points list mirrored to the tracker. Use when the user says
-  "implement loop", "run the loop", "work through the plan/handoff autonomously", or hands a
-  handoff/plan/ticket and asks you to build it end-to-end.
+  Use when the user says "implement loop", "run the loop", "autonomously", "AFK", "without
+  supervision", or hands a handoff doc, plan, ticket, or spec and asks you to build it end-to-end
+  on your own. Drives the multi-phase implementation through a disciplined autonomous
+  dev-test-review-commit loop per phase, with a human checkpoint at merge. When in doubt between
+  the two loops: unattended execution → this skill; user staying in the loop → ship-feature.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.3.0"
+version: "1.3.1"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -19,7 +17,7 @@ escalate on design forks, human-gate the merge, never let findings rot.
 
 ## 0. Bootstrap (once, before the loop)
 
-1. **Locate the source of truth** — a handoff doc, a plan, or a tracker ticket. If none was named
+1. **Locate the source of truth** — a handoff doc, a plan, a tracker ticket, or an approved spec. If none was named
    and context is thin, **ask** for it; do not invent scope. Read it fully before touching code.
 2. **Extract phases + per-phase definition-of-done (DoD).** Use the handoff's if present. If DoD is
    missing or vague, **derive candidates and confirm with the user** — "done" must be checkable (a
@@ -133,10 +131,10 @@ beyond branch-local commits (push, force-push, tag, merge) and wait for explicit
 
 ## 5b. Related skills
 
-This is the **autonomous** loop, driven from a handoff doc, plan, or ticket. For the human-paced,
-spec-driven flow — a feature proposed by a user, written up by `spec-feature` into `specs/NNN-slug.md`,
-then built phase by phase with a review gate you watch — use **`ship-feature`** instead. Same discipline,
-different pacing and a tighter human leash.
+This is the **autonomous** loop, driven from a handoff doc, plan, ticket, or approved spec. The split
+with **`ship-feature`** is pacing, not the artifact: unattended execution → this loop; a build the user
+watches phase by phase, with a review gate they attend — typically a `specs/NNN-slug.md` from
+`spec-feature` — → `ship-feature`. Same discipline, tighter human leash.
 
 ## 6. Composition
 For a **wide** phase, the dev step can delegate the parallel build to a fan-out executor (e.g. a

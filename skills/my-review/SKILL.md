@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.5.0"
+version: "1.6.0"
 ---
 
 ## Context
@@ -96,6 +96,22 @@ and say `None.`
 
 **The report is the deliverable: print it in full, as message text, before anything else** — never only
 inside a tool call, never condensed into the menu. Then move to the fix-scope step below.
+
+<!-- block: reviewed-tree -->
+**Stamp what was reviewed.** End the report with the digest of the exact tree the findings describe:
+
+```bash
+echo "Reviewed-tree: $(git rev-parse --short HEAD):$( { git diff HEAD; git ls-files --others --exclude-standard -z | while IFS= read -rd '' f; do git diff --no-index /dev/null "$f"; done; } | git hash-object --stdin | cut -c1-12)"
+```
+
+Untracked files are folded in deliberately: `git diff HEAD` alone does not see them, so a new module
+or a new test added after the review would leave the digest unchanged and pass the gate unreviewed —
+and new files are most of what a feature adds.
+
+Print the line verbatim. `smart-commit` recomputes it before committing, so a review followed by more
+edits stops being mistakable for a review of what ships. Re-emit it after applying a fix scope: the
+tree moved, so the old digest is stale by construction.
+<!-- /block -->
 
 **Every finding names its fix, with its tier.** A defect without a proposed change is half a review: the
 reader has to re-derive the remedy you already worked out. One line, concrete enough to act on — the
