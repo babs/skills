@@ -7,7 +7,7 @@ description: >-
   smart-commit), human-paced. If the user asks for autonomous, unattended, or AFK execution — or
   hands the work and leaves — use implement-loop instead, even when a specs/ file exists.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.4.1"
+version: "1.5.0"
 ---
 
 # Ship a feature — the quality loop
@@ -79,6 +79,10 @@ risk — that judgement is exactly what is wrong when a gate would have caught y
 *no* test command or *no* lint gate, say so explicitly in your report: an unstated absence is
 indistinguishable from a skip.
 
+**A `Dockerfile` in the tree is a gate too**: `make docker-build` (or `docker build .`) must pass
+before review and again before commit — an image that no longer builds is an outage, not a bug.
+Docker unavailable on this host → report the gate as skipped, by name, never silently.
+
 **Judge on the output, not the exit status** — an aggregate target can exit 0 over an inner failure;
 when they disagree, the report wins and the gate itself is a defect to fix (details: smart-commit step 4).
 
@@ -134,6 +138,7 @@ Rule of thumb otherwise: if you hesitate about whether it is large, it is large.
 make test          # fast layer — must be green
 make test-e2e      # real database — before the merge request, not after (where the target exists)
 make coverage      # enforced floors: backend --cov-fail-under, frontend vitest thresholds
+make docker-build  # when a Dockerfile exists — the image must build before the commit
 ```
 
 (Targets per the project's own Makefile — run what it defines; a missing gate is reported, not skipped.)

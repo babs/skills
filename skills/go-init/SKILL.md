@@ -2,7 +2,7 @@
 name: go-init
 description: Initialize a new Go HTTP service or align an existing one to the standard. Use when starting any new Go service or project — when the user says "new Go service", "bootstrap/init a Go app", or asks to align an existing Go service to the standard. Never scaffold a Go service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 ## Context
@@ -323,7 +323,10 @@ coverage.txt
 ```bash
 go mod tidy
 go test ./...
+make docker-build   # the Dockerfile is a gate: it builds, or the scaffold is not done
 ```
+
+Docker unavailable on this host → report the gate as skipped, by name — never silently.
 
 ### 4. AGENTS.md
 
@@ -332,7 +335,7 @@ Create or update `AGENTS.md` per `${CLAUDE_PLUGIN_ROOT}/rules/agents-md.md`.
 ## Output
 
 ### New project
-Report files created and issues from `go test` or `golangci-lint run`.
+Report files created and issues from `go test`, `golangci-lint run` or `make docker-build`.
 
 ### Existing project
 Report as a checklist:

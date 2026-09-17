@@ -7,7 +7,7 @@ description: >-
   dev-test-review-commit loop per phase, with a human checkpoint at merge. When in doubt between
   the two loops: unattended execution → this skill; user staying in the loop → ship-feature.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.3.1"
+version: "1.4.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -63,6 +63,9 @@ code style; comments explain WHY, not WHAT.
 ### 1.2 Test + DUAL guards (both, every iteration — not just one)
 - Run the **test suite**, `pre-commit run --all-files` (if configured), and **coverage** — coverage
   must **not decrease** vs baseline (a floor, not decoration).
+- A `Dockerfile` in the tree makes the **image a gate**: `make docker-build` on every iteration that
+  touches packaging, dependencies or files the Dockerfile copies, and once per phase regardless.
+  Docker unavailable on this host → recorded as skipped, by name — never silently.
 - **Structural / static guard** — the invariant the work must establish, checked statically:
   an import-graph or dependency assertion, a lint rule, a type check, an API-surface snapshot.
   Proves the *intended change* happened.

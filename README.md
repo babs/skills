@@ -140,15 +140,17 @@ cannot emit divergent ones), so a standalone install skips those files entirely.
 `rules/` also holds standalone reference standards (currently `github-actions.md`)
 not wired to any skill — kept as published coding standards.
 
-## Caveat — `fullstack-init` vendors an external tool
+## Caveat — `fullstack-init` ships a vendored external tool
 
 Projects scaffolded by `fullstack-init` run their database migrations with
-[babs/db_migrate](https://github.com/babs/db_migrate) — a single file fetched **at a pinned commit SHA**
-(recorded in the vendoring commit) and committed into the project, so the shipped version is whatever
-your repo holds. It is not a PyPI dependency. It executes DDL with the migration credential, so diff
-it on every upgrade like any other code.
+[babs/db_migrate](https://github.com/babs/db_migrate) — a single file **bundled in this plugin**
+(`skills/fullstack-init/db_migrate.py`, at the version `rules/postgres.md` states; the validator keeps
+the two in agreement) and **copied** into the project, never fetched at scaffold time. The project
+commits its copy, so the shipped version is whatever its repo holds. It is not a PyPI dependency. It
+executes DDL with the migration credential, so diff it on every upgrade like any other code. Bumping
+the bundled copy is a PR here (CONTRIBUTING, "Bump the bundled db_migrate.py").
 Its [`llms.txt`](https://github.com/babs/db_migrate/blob/master/llms.txt) is the agent-facing usage
-reference (linked at `master` for readability — the runtime copy itself is SHA-pinned).
+reference (linked at `master` for readability — the bundled copy itself is version-pinned).
 
 ## Contributing
 

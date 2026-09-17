@@ -367,6 +367,56 @@ class ValidateSkillsTest(unittest.TestCase):
         r = run(self.root)
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def _dbm_pair(self, rule: str | None, version: str | None) -> None:
+        # rule=None / version=None leaves that side of the pair absent.
+        if rule is not None:
+            (self.root / "rules" / "postgres.md").write_text(f"# pg\n\n{rule}\n")
+        if version is not None:
+            (self.root / "skills" / "fullstack-init").mkdir(parents=True, exist_ok=True)
+            (self.root / "skills" / "fullstack-init" / "db_migrate.py").write_text(
+                f'#!/usr/bin/env python3\n"""runner"""\n\n__version__ = "{version}"\n'
+            )
+
+    def test_db_migrate_matching_version_passes(self) -> None:
+        self._dbm_pair("The plugin ships babs/db_migrate v1.1.0 — copy it.", "1.1.0")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_db_migrate_version_drift_fails(self) -> None:
+        # The drift class this gate exists for: the bundled file bumped, the rule still naming the
+        # old version (or the reverse) — the agent records a version the project does not hold.
+        self._dbm_pair("The plugin ships babs/db_migrate v1.1.0 — copy it.", "1.2.0")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("db_migrate version drift", r.stdout)
+        self.assertIn("v1.2.0", r.stdout)
+
+    def test_db_migrate_rule_stating_two_versions_fails(self) -> None:
+        # A half-done bump: one occurrence updated, the other stale — both match the file, or
+        # neither; the gate must refuse the ambiguity rather than pick one.
+        self._dbm_pair("babs/db_migrate v1.1.0 here,\nand babs/db_migrate v1.2.0 there.", "1.2.0")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("exactly one", r.stdout)
+
+    def test_db_migrate_rule_without_bundled_file_fails(self) -> None:
+        # Requiring both sides would disarm the gate on a rename (see 2c); the rule prescribing a
+        # copy of a file the plugin does not ship is the scaffold-time failure this exists to stop.
+        self._dbm_pair("The plugin ships babs/db_migrate v1.1.0 — copy it.", None)
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("must ship together", r.stdout)
+
+    def test_db_migrate_file_without_version_line_fails(self) -> None:
+        # A locally edited or truncated copy loses the __version__ line; empty must not compare
+        # equal to anything.
+        (self.root / "rules" / "postgres.md").write_text("# pg\n\nbabs/db_migrate v1.1.0\n")
+        (self.root / "skills" / "fullstack-init").mkdir(parents=True)
+        (self.root / "skills" / "fullstack-init" / "db_migrate.py").write_text("print('not the runner')\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("no '__version__", r.stdout)
+
     def test_diverged_python_image_pin_fails(self) -> None:
         (self.root / "rules" / "img.md").write_text("# img\n\nFROM python:3.14-slim-trixie\n")
         (self.root / "rules" / "img2.md").write_text("# img2\n\nFROM python:3.13-slim-bookworm\n")

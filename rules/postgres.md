@@ -207,24 +207,24 @@ ALTER TABLE items DROP COLUMN exported_at;
 
 Use **[babs/db_migrate](https://github.com/babs/db_migrate)** — a single-file, zero-framework async
 runner (asyncpg + structlog + python-dotenv — asyncpg comes with this stack, the other two with the
-base API floor). Do **not** hand-roll a
-copy per project, and do not fork it silently.
+base API floor). Do **not** hand-roll a copy per project, and do not fork it silently.
 
-Vendor it into the project root, **pinned to a commit, never to `master`** — this file executes DDL
-with the migration credential, and an unpinned fetch is code you did not review running as your DBA
-(CWE-494). Resolve the ref once, at vendor time, and record it:
+The plugin ships it, reviewed and pinned: `${CLAUDE_PLUGIN_ROOT}/skills/fullstack-init/db_migrate.py`
+is babs/db_migrate v1.1.0. Copy it — no network, nothing to fetch or authorise:
 
 ```bash
-# Resolve HEAD once; the SHA in the command below is the audit trail.
-REF=$(git ls-remote https://github.com/babs/db_migrate.git HEAD | cut -f1)
-curl -fsSL "https://raw.githubusercontent.com/babs/db_migrate/${REF}/db_migrate.py" -o db_migrate.py
-chmod +x db_migrate.py
-echo "db_migrate.py vendored at ${REF}" # goes in the commit message and AGENTS.md
+cp "${CLAUDE_PLUGIN_ROOT:?plugin root = the fullstack-init skill's base directory without skills/fullstack-init}/skills/fullstack-init/db_migrate.py" db_migrate.py && chmod +x db_migrate.py
+uv run ./db_migrate.py --version   # once deps are synced; the version goes in the commit message and AGENTS.md
 ```
 
-The file is committed into the project, so the version you ship is whatever your repo holds. To
-upgrade: re-run the two lines above, `git diff db_migrate.py` like any other code, commit with the new
-SHA. Never edit the vendored copy in place — a silent fork is unupgradeable.
+**Copy it before writing the Makefile, Dockerfile, compose file or `tests/test_e2e.py`** — all four
+name it; written first, they document commands that fail. Never fetch it over the network at scaffold
+time: the plugin copy is the reviewed one, and a download of DDL-executing code is what a permission
+classifier refuses (unpinned `HEAD` is code nobody reviewed running as your DBA — CWE-494).
+
+The project commits its copy; the version it ships is whatever its repo holds. Upgrade = bump the
+plugin, re-copy, `git diff db_migrate.py` like any other code, commit with the new version. Never
+edit the copy in place — a silent fork is unupgradeable.
 
 **Usage reference for the agent**: the tool ships
 [`llms.txt`](https://github.com/babs/db_migrate/blob/master/llms.txt) (TL;DR: commands, file format, env
@@ -235,6 +235,8 @@ uv run ./db_migrate.py --create "add export flag"   # generates db/migrations/<t
 uv run ./db_migrate.py                              # apply all pending
 uv run ./db_migrate.py --status                     # applied / pending
 uv run ./db_migrate.py --rollback                   # undo the last one (local iteration)
+uv run ./db_migrate.py --baseline                   # mark all pending as applied WITHOUT running them:
+                                                    # schema already there (adopted DB, DDL applied by hand)
 ```
 
 | Env var | Default | Note |

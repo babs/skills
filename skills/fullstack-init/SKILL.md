@@ -7,7 +7,7 @@ description: >-
   Postgres", or asks to align an existing full-stack project. For an API with no UI and no database,
   use python-init instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep, AskUserQuestion
-version: "2.2.0"
+version: "2.3.0"
 ---
 
 ## Context
@@ -61,7 +61,7 @@ This skill needs the full plugin install (`rules/` present) — it is not standa
 ├── Makefile
 ├── docker-compose.yml        # db + migrate + app, local only
 ├── Dockerfile                # 3 stages: frontend build → backend deps → runtime
-├── db_migrate.py             # vendored at a pinned SHA (rules/postgres.md); deploy runs it as a Job
+├── db_migrate.py             # copied from the plugin — §2b, FIRST; deploy runs it as a Job
 ├── db/migrations/            # <YYYYMMDDHHMMSS>_<description>.sql, dbmate format
 ├── run.sh                    # rules/python.md — conditional OTel; entrypoint = python -m <pkg>
 ├── pyproject.toml            # + committed uv.lock
@@ -72,6 +72,18 @@ This skill needs the full plugin install (`rules/` present) — it is not standa
 ├── tests/                    # conftest.py, test_api.py, test_e2e.py
 └── frontend/                 # vite + react + ts (omit if no UI)
 ```
+
+## 2b. Prerequisite — the migration runner, before anything that names it
+
+```bash
+cp "${CLAUDE_PLUGIN_ROOT:?plugin root = this skill's base directory without skills/fullstack-init}/skills/fullstack-init/db_migrate.py" db_migrate.py && chmod +x db_migrate.py
+ls -l db_migrate.py
+```
+
+Not there → **stop**; write nothing from §5 on. The Dockerfile, compose file, Makefile and
+`tests/test_e2e.py` all name this file — scaffolded without it, `make up`, `make test-e2e` and
+`make docker-build` fail while the README documents them as working. The plugin copy is the reviewed,
+pinned one (`rules/postgres.md`); never fetch it over the network.
 
 ## 3. Backend
 
@@ -84,9 +96,16 @@ This skill needs the full plugin install (`rules/` present) — it is not standa
   ```
 
   Dev group: the base one from the rule **plus `aiosqlite>=0.20`** (SQLite fast test layer). Tooling
-  config (`[tool.ruff]`, `[tool.mypy]` incl. `check_untyped_defs`, `[tool.pytest.ini_options]` with
-  `--strict-markers` and the `e2e` marker, coverage over `src`): per `rules/python.md`. Build system:
-  hatchling, `packages = ["src/<pkg>"]`.
+  config (`[tool.ruff]`, the `[tool.mypy]` block, `[tool.pytest.ini_options]` with `--strict-markers`
+  and the `e2e` marker, coverage over `src`): per `rules/python.md`. **Plus, this project only**:
+
+  ```toml
+  [[tool.mypy.overrides]]   # asyncpg ships no py.typed; db_migrate.py imports it
+  module = "asyncpg.*"
+  ignore_missing_imports = true
+  ```
+
+  Build system: hatchling, `packages = ["src/<pkg>"]`.
 - **config.py** — pydantic-settings per `rules/python.md` (Configuration): `env_prefix="APP_"`,
   `database_url: SecretStr = Field(validation_alias="DATABASE_URL")` with **no default**.
 - **db.py** — the engine/session block from `rules/postgres.md` (Connection), verbatim.
@@ -98,7 +117,7 @@ This skill needs the full plugin install (`rules/` present) — it is not standa
   timeout_graceful_shutdown=25)` per `rules/python.md` (Shutdown — the 25 is
   `pool_timeout + command_timeout + margin`, not `statement_timeout`).
 - **run.sh** — from `rules/python.md`, entrypoint `python -m <pkg>`. `chmod +x`.
-- **Migrations** — vendor `db_migrate.py` at a pinned SHA and write migrations by hand, both per
+- **Migrations** — the runner is already in place (§2b); write migrations by hand per
   `rules/postgres.md` (Migrations). The deploy runs it as a Job **before** the new pods start; that
   ordering comes from the deploy tooling (Helm hook / Argo sync wave / CI stage), not from this
   scaffold — verify there that a failed migration blocks the rollout.
@@ -314,12 +333,20 @@ detect-secrets scan > .secrets.baseline  # only if missing — then COMMIT it
 pre-commit install
 pre-commit run --all-files
 uv run pytest -m "not e2e"
+uv run ./db_migrate.py --version         # the §2b copy runs under the project's venv
+make docker-build                        # the Dockerfile is a gate: it builds, or the scaffold is not done
 ```
+
+Docker unavailable on this host → the gate is **reported as skipped, by name**, in the Output — never
+silently.
 
 ## Output
 
-**New project**: files created, `pre-commit` result, test result, the recorded auth/rate-limit
-decision, and the exact start commands (`make up`, then the URL).
+**New project**: **blockers first** — every §9 command that failed, and every file a Makefile,
+Dockerfile or compose recipe names that does not exist, each with the `make` targets it breaks. A
+blocker is never a footnote: a scaffold that documents commands which fail is not done. Then: files
+created, `pre-commit`, test and `docker-build` results, the recorded auth/rate-limit decision, and
+the exact start commands (`make up`, then the URL).
 
 **Existing project**: a checklist — [x] compliant / [~] updated (what changed) / [ ] needs manual
 attention (why).
