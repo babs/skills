@@ -95,6 +95,26 @@ Bumping one is all-or-nothing: `scripts/validate-skills.sh` fails when the same 
 files (uv, python/node/golang/rust/postgres base images, distroless). Change every occurrence in one
 commit.
 
+## Bump the bundled `db_migrate.py`
+
+`skills/fullstack-init/db_migrate.py` is [babs/db_migrate](https://github.com/babs/db_migrate) at a
+release tag, byte-for-byte — never edited here. Projects copy it (`rules/postgres.md`), so a bump is
+a PR in this repo, reviewed like code that runs DDL as the DBA:
+
+```bash
+TAG=v1.2.0
+# Tags move, commits do not: resolve the tag to its commit (peeled `^{}` for an annotated tag) and
+# fetch by SHA. The SHA goes in the PR description.
+SHA=$(git ls-remote --tags https://github.com/babs/db_migrate.git "${TAG}" "${TAG}^{}" | tail -1 | cut -f1)
+curl -fsSL "https://raw.githubusercontent.com/babs/db_migrate/${SHA}/db_migrate.py" \
+  -o skills/fullstack-init/db_migrate.py
+git diff skills/fullstack-init/db_migrate.py          # read it — this is the review
+# then set the same version in rules/postgres.md ("babs/db_migrate vX.Y.Z")
+```
+
+`scripts/validate-skills.sh` (check 4b) fails when the version the rule states differs from the
+file's `__version__`, when the rule states two versions, or when either side is missing.
+
 ## Add or change a rule
 
 1. Create `rules/<topic>.md` with `paths:` frontmatter — the globs it applies to:

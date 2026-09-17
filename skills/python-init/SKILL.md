@@ -2,7 +2,7 @@
 name: python-init
 description: Initialize a new Python FastAPI service — no database, no UI — or align an existing one to the standard. Use when starting a plain Python service or API, when the user says "new Python project", "bootstrap FastAPI", "init a Python service", or asks to align an existing Python project to the standard. If the app needs PostgreSQL or a React UI, use fullstack-init instead. Never scaffold a Python service from habit; invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read, Glob, Grep
-version: "1.3.0"
+version: "1.4.0"
 ---
 
 ## Context
@@ -81,17 +81,23 @@ select = ["E", "W", "F", "I", "B", "C4", "UP"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["project_name"]
+```
 
+<!-- include: rules/python.md#mypy-config -->
+```toml
 [tool.mypy]
 python_version = "3.14"
+files = ["."]   # flat or src/ layout alike; `uv run mypy` takes no arguments. .venv is skipped.
 check_untyped_defs = true
 disallow_untyped_defs = true
 disallow_any_generics = true
 strict_optional = true
 warn_return_any = true
 warn_unused_configs = true
-ignore_missing_imports = true
+```
+<!-- /include -->
 
+```toml
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -132,11 +138,15 @@ repos:
         args: [--baseline, .secrets.baseline]
 
   # No pyupgrade hook: ruff's UP rules (with --fix) already cover it.
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0
+  # mypy in the PROJECT venv — mirrors-mypy's isolated env resolves every dependency to Any.
+  - repo: local
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic]
+        name: mypy (project venv)
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
 ```
 
 **Align**: if file exists, ensure all repos/hooks above are present. Add missing ones without removing project-specific hooks.
@@ -365,7 +375,10 @@ detect-secrets scan > .secrets.baseline  # only if missing
 pre-commit install
 pre-commit run --all-files
 chmod +x main.py run.sh  # if present
+make docker-build        # the Dockerfile is a gate: it builds, or the scaffold is not done
 ```
+
+Docker unavailable on this host → report the gate as skipped, by name — never silently.
 
 ### 4. AGENTS.md
 
@@ -374,7 +387,7 @@ Create or update `AGENTS.md` per `${CLAUDE_PLUGIN_ROOT}/rules/agents-md.md`.
 ## Output
 
 ### New project
-Report files created and issues from `pre-commit run --all-files`.
+Report files created and issues from `pre-commit run --all-files` and `make docker-build`.
 
 ### Existing project
 Report as a checklist:

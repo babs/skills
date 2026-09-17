@@ -74,9 +74,28 @@ Both lines can end up as valid NDJSON — and the second one is still worthless.
 ## Tooling
 
 - ruff: `line-length = 110`, `target-version = "py314"`, select `["E", "W", "F", "I", "B", "C4", "UP"]`
-- mypy: strict (`disallow_untyped_defs`, `disallow_any_generics`, `strict_optional`, `warn_return_any`)
+- mypy: the block below, verbatim. No global `ignore_missing_imports` — it turns a typo'd import into
+  `Any`. A dependency with no `py.typed` (asyncpg) gets a `[[tool.mypy.overrides]]` scoped to it, in
+  the project that uses it.
 - pre-commit hooks: ruff (lint+format), pre-commit-hooks (trailing-whitespace, end-of-file-fixer, check-yaml, check-toml, detect-private-key, shebangs), detect-secrets, mypy. No separate pyupgrade hook — ruff's `UP` rules with `--fix` already do that job; two tools rewriting the same syntax is drift waiting to happen
+- the mypy hook is `repo: local` / `entry: uv run mypy` / `language: system` / `pass_filenames: false`
+  — it runs in the project venv. `mirrors-mypy` runs in an isolated env where every dependency
+  resolves to `Any`: wrong argument types and typo'd attributes on fastapi/httpx/sqlalchemy calls pass
 - detect-secrets: `detect-secrets scan > .secrets.baseline`
+
+<!-- block: mypy-config -->
+```toml
+[tool.mypy]
+python_version = "3.14"
+files = ["."]   # flat or src/ layout alike; `uv run mypy` takes no arguments. .venv is skipped.
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+strict_optional = true
+warn_return_any = true
+warn_unused_configs = true
+```
+<!-- /block -->
 
 ## Default stack (FastAPI) — the source of truth
 

@@ -6,6 +6,7 @@
 #   2c. the Go build-time var set agrees between rules/golang.md and the go-init template,
 #   3. shared rule/skill blocks have not drifted (scripts/sync_blocks.py, incl. its own unit tests),
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image),
+#      and (4b) the bundled db_migrate.py's __version__ is the one rules/postgres.md states,
 #      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
 #      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest),
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
@@ -233,6 +234,33 @@ for pin in 'astral-sh/uv:[0-9][A-Za-z0-9._-]*' 'python:3\.[0-9]+-slim-[a-z]+' \
     rc=1
   fi
 done
+
+# 4b. The bundled migration runner and the version the rule claims for it must agree. The rule is
+#     what the agent reads, the file is what the project gets (copied byte-for-byte); the file's
+#     __version__ is the truth. Runs when EITHER side exists — requiring both would let a rename
+#     disarm it silently (same shape as 2c).
+readonly DBM_RULE="rules/postgres.md" DBM_FILE="skills/fullstack-init/db_migrate.py"
+if [[ -f "$ROOT/$DBM_RULE" || -f "$ROOT/$DBM_FILE" ]]; then
+  if [[ ! -f "$ROOT/$DBM_RULE" || ! -f "$ROOT/$DBM_FILE" ]]; then
+    echo "ERROR: ${DBM_RULE} and ${DBM_FILE} must ship together — one is missing"
+    rc=1
+  else
+    # `|| true`: zero matches is reported below as its own error, not as a script abort.
+    claimed="$(grep -oE 'babs/db_migrate v[0-9]+\.[0-9]+\.[0-9]+' "$ROOT/$DBM_RULE" | sort -u || true)"
+    actual="$(grep -oE '^__version__ = "[0-9]+\.[0-9]+\.[0-9]+"' "$ROOT/$DBM_FILE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+    if [[ -z "$claimed" || "$(wc -l <<<"$claimed")" -ne 1 ]]; then
+      echo "ERROR: ${DBM_RULE} must state exactly one 'babs/db_migrate vX.Y.Z'; found:"
+      sed 's/^/  /' <<<"${claimed:-(none)}"
+      rc=1
+    elif [[ -z "$actual" ]]; then
+      echo "ERROR: ${DBM_FILE} has no '__version__ = \"X.Y.Z\"' line — not the upstream file?"
+      rc=1
+    elif [[ "${claimed#babs/db_migrate v}" != "$actual" ]]; then
+      echo "ERROR: db_migrate version drift — ${DBM_RULE} states ${claimed#babs/db_migrate }, ${DBM_FILE} is v${actual}; bump them together"
+      rc=1
+    fi
+  fi
+fi
 
 # 5. The OTel dependency set is all-or-nothing. `opentelemetry-distro` is the SOLE carrier of the
 #    `opentelemetry_configurator` entry point, so a deps list naming instrumentors WITHOUT it
