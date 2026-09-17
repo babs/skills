@@ -5,9 +5,11 @@ description: >-
   acceptance criteria, and phases with a measurable definition-of-done — before any code is written.
   Use when the user proposes a feature, says "I want the app to do X", "add a feature", "spec this out",
   "write a spec", or hands a vague idea to implement. Never start coding a feature from a chat message
-  alone; spec it first, get it validated, then implement (see ship-feature).
+  alone; spec it first, get it validated, then implement with one of the two loops — ship-feature
+  (the user stays and approves each fix scope) or implement-loop (runs every phase alone, the user
+  reviews at the merge). Offer both; never pick one for the user.
 allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion
-version: "1.0.2"
+version: "1.1.0"
 ---
 
 # Spec a feature before building it
@@ -49,7 +51,7 @@ and `specs/README.md` (the index) if absent.
 # NNN — <Feature name>
 
 **Status**: draft | approved | in progress | shipped
-<!-- draft → approved (you) → in progress (ship-feature, on starting phase 1) → shipped (all phases done) -->
+<!-- draft → approved (you) → in progress (ship-feature or implement-loop, on starting phase 1) → shipped (all phases done) -->
 **Requested by**: <who>
 **Date**: <YYYY-MM-DD>
 
@@ -125,7 +127,11 @@ template. But **every** feature gets a file: "too small to spec" is how undocume
 Show the user the spec (or its acceptance criteria at minimum) and **wait for approval** before any
 code. Set `Status: approved`. Add the row to `specs/README.md`.
 
-Implementation is `ship-feature` — it reads this file and works phase by phase against these DoDs.
+Implementation is one of two loops; both read this file and work phase by phase against these DoDs.
+Offer them, one line each, and let the user pick — never default to either:
+
+- `ship-feature` — the user stays: sees each review, approves each fix scope.
+- `implement-loop` — runs every phase alone; the user reviews at the merge.
 
 ## Output
 

@@ -102,6 +102,9 @@ collides with another plugin.
 
 ### Spec → implement
 
+After `spec-feature`, the agent offers both loops and the user picks: `ship-feature` when they stay,
+`implement-loop` when they leave. Neither is the default; an unstated mode is a question, not a guess.
+
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
 | `spec-feature` | `/spec-feature` | Turn a feature request into `specs/NNN-slug.md` — problem, scope, out-of-scope, acceptance criteria, phases with a measurable DoD — before any code; auto-triggers when a feature is proposed |
