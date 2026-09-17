@@ -2,12 +2,13 @@
 name: implement-loop
 description: >-
   Use when the user says "implement loop", "run the loop", "autonomously", "AFK", "without
-  supervision", or hands a handoff doc, plan, ticket, or spec and asks you to build it end-to-end
-  on your own. Drives the multi-phase implementation through a disciplined autonomous
-  dev-test-review-commit loop per phase, with a human checkpoint at merge. When in doubt between
-  the two loops: unattended execution → this skill; user staying in the loop → ship-feature.
+  supervision", "take it from here", "do the whole thing", "build it all", "I'll check back later",
+  or hands a handoff doc, plan, ticket, or spec and asks you to build it end-to-end on your own.
+  Drives the multi-phase implementation through a disciplined autonomous dev-test-review-commit
+  loop per phase, with a human checkpoint at merge. Mode not stated → ask one question, supervised
+  (ship-feature) or autonomous (this skill); never default to either loop.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.4.0"
+version: "1.5.0"
 ---
 
 # Implement from handoff — the autonomous build loop
