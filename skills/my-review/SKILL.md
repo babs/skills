@@ -20,7 +20,8 @@ Review as if this code will run in production under heavy load at 3 AM with no o
 
 - **Functionality**: check the code matches the functional requirement and solves the reason it exists
 - **Logic**: Correctness, edge cases, error handling
-- **Security**: Input validation, injection risks, auth/authz. Anchor findings to recognised standards where they apply — OWASP Top 10 (web) / OWASP API Security Top 10 (APIs), OWASP ASVS for verification depth, and CWE IDs for precise classification. Cover the usual suspects: injection (SQL/NoSQL/command/template), broken access control, SSRF, insecure deserialization, secrets in code or logs, weak/misused crypto, missing rate limiting, and vulnerable dependencies (CVEs) touched by the change.
+- **Resiliency**: behaviour under partial failure — retry/backoff, timeouts, idempotency, cleanup on the error path, graceful degradation, races and concurrency, blast radius of a failure. Shared state a function flips — class static, module-level variable, thread local, singleton field, ambient context — must be saved and restored by whoever flips it, never forced
+- **Security**: Input validation, injection risks, auth/authz. Anchor findings to recognised standards where they apply — OWASP Top 10 (web) / OWASP API Security Top 10 (APIs), OWASP ASVS for verification depth, and CWE IDs for precise classification. Cover the usual suspects: injection (SQL/NoSQL/command/template), broken access control, SSRF, insecure deserialization, secrets in code or logs, weak/misused crypto, missing rate limiting, and vulnerable dependencies (CVEs) touched by the change. Every debug, trace or feature toggle whose value comes from outside the process — query string, cookie, request header, environment variable, CLI flag, remote config — is an access-control question: who can set it, and what does it unlock (log volume, request and response bodies, PII, a privileged code path)?
 - **Performance**: N+1 queries, complexity, resource cleanup
 - **Coherence**: Naming, patterns, architecture alignment — judged per file, not per hunk: after the change, one way of logging, one way of raising and handling errors, one naming scheme. The finding is usually in the lines the diff left untouched
 - **Readability**: keep the cognitive load low, go simple but not naive
@@ -94,16 +95,6 @@ file, and an undocumented gotcha. Density is part of it — one line unless the 
 six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
 statement below it.
 <!-- /block -->
-
-## Standing lenses — ask these before writing any finding
-
-- **Authorization on every switch.** Any debug, trace or feature toggle whose value comes from
-  outside the process — query string, cookie, request header, environment variable, CLI flag,
-  remote config — *who can set it?* An unauthenticated caller? And what does it unlock: log volume,
-  request and response bodies, PII, a privileged code path?
-- **Ownership of process-wide state.** A function that flips shared state — a class static, a
-  module-level variable, a thread local, a singleton's field, an ambient context — is it reachable
-  from a scope that already set it? Save and restore the previous value; never force one.
 
 ## Output
 
