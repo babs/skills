@@ -8,6 +8,7 @@ with VALIDATE_SKILLS_NO_SELFTEST=1 (breaking the self-test recursion).
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -41,12 +42,12 @@ def make_tree(root: Path, skill: str = GOOD_SKILL, rule: str = GOOD_RULE) -> Non
         shutil.copy(SCRIPTS / f, root / "scripts" / f)
 
 
-def run(root: Path) -> subprocess.CompletedProcess[str]:
+def run(root: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["bash", str(root / "scripts" / "validate-skills.sh")],
         capture_output=True,
         text=True,
-        env={**os.environ, "VALIDATE_SKILLS_NO_SELFTEST": "1"},
+        env={**os.environ, "VALIDATE_SKILLS_NO_SELFTEST": "1", **(env or {})},
     )
 
 
@@ -692,6 +693,54 @@ class VersionBumpGateTest(unittest.TestCase):
         r = run(self.root)
         self.assertEqual(r.returncode, 1)
         self.assertIn("fetch-depth", r.stdout)
+
+    def test_gitlab_merge_request_base_is_used(self) -> None:
+        # A merge-request pipeline is handed the base, so the check must work with no remote ref
+        # and no history beyond it.
+        base = subprocess.run(
+            ["git", "-C", str(self.root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        git(self.root, "update-ref", "-d", "refs/remotes/origin/master")
+        self._edit(self._skill(), None)
+        r = run(self.root, {"CI_MERGE_REQUEST_DIFF_BASE_SHA": base})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("skills/demo/SKILL.md changed since", r.stdout)
+
+    def test_github_pull_request_base_is_used(self) -> None:
+        base = subprocess.run(
+            ["git", "-C", str(self.root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        git(self.root, "update-ref", "-d", "refs/remotes/origin/master")
+        event = self.root / "event.json"
+        event.write_text(json.dumps({"pull_request": {"base": {"sha": base}}}))
+        self._edit(self._skill(), None)
+        r = run(self.root, {"GITHUB_EVENT_PATH": str(event)})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("skills/demo/SKILL.md changed since", r.stdout)
+
+    def test_unfetchable_ci_base_falls_back_to_the_ref(self) -> None:
+        # The sha CI names can be missing from a shallow clone and unfetchable (no network, no
+        # remote): the ref walk still has to produce a base rather than report none.
+        self._edit(self._skill(), None)
+        r = run(self.root, {"CI_MERGE_REQUEST_DIFF_BASE_SHA": "0" * 40})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("skills/demo/SKILL.md changed since", r.stdout)
+        self.assertNotIn("no base to compare", r.stdout)
+
+    def test_missing_git_in_a_checkout_fails(self) -> None:
+        # The failure this replaces: a CI image without git reported "no git repository" and the
+        # gate passed silently on a real checkout.
+        r = run(self.root, {"VALIDATE_SKILLS_GIT_BIN": "git-not-installed"})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("git is not installed", r.stdout)
+
+    def test_missing_git_without_a_checkout_skips(self) -> None:
+        shutil.rmtree(self.root / ".git")
+        r = run(self.root, {"VALIDATE_SKILLS_GIT_BIN": "git-not-installed"})
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("version-bump gate SKIPPED", r.stdout)
 
     def test_tree_without_git_skips(self) -> None:
         shutil.rmtree(self.root / ".git")

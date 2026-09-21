@@ -15,11 +15,9 @@ jobs:
       # Pinned release key fingerprint — fail hard if the published key rotates.
       CLAUDE_KEY_FPR: 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
     steps:
+      # Default shallow checkout: the version-bump gate takes its base from the pull_request
+      # payload and fetches that one commit, so no history is needed here.
       - uses: actions/checkout@v7
-        with:
-          # The version-bump gate resolves its base through origin/<default-branch>;
-          # a shallow checkout has no such ref and the gate fails rather than skip.
-          fetch-depth: 0
 
       - name: Install Claude Code (GPG-pinned apt repo)
         run: |
