@@ -198,6 +198,9 @@ your inputs back ungraded and let the caller grade. Two axes, never collapsed in
 | **D** | a guard written here validated nothing, or unverified work was presented as verified |
 | **F** | the defect reached production or the user, and they are the ones who found it |
 
+Applied fixes are the least reviewed code in the branch — re-review them against the same bar before
+grading, and count a defect a fix introduced against the process letter.
+
 **One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
 lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
 defect.

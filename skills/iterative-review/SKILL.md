@@ -120,6 +120,13 @@ A Critical or High finding must carry **evidence you produced**, not an argument
 
 Findings from reading alone are hypotheses. Ship them as hypotheses.
 
+A measurement is not a number you saw:
+
+- Never run two suites concurrently against a shared resource (database, index, cache, fixture
+  server). A figure from a contaminated run is not a measurement: say so and redo it.
+- A red test is not a finding until it has been replayed on the base resolved above, under the same
+  conditions. Report it as pre-existing or as a regression, never as bare "failing".
+
 ## The fix bar — do not propose decoration
 
 Every fix you propose is one of three tiers. Name the tier.
@@ -190,6 +197,9 @@ your inputs back ungraded and let the caller grade. Two axes, never collapsed in
 | **C** | several rescue rounds — the fixes were the least reliable code in the branch |
 | **D** | a guard written here validated nothing, or unverified work was presented as verified |
 | **F** | the defect reached production or the user, and they are the ones who found it |
+
+Applied fixes are the least reviewed code in the branch — re-review them against the same bar before
+grading, and count a defect a fix introduced against the process letter.
 
 **One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
 lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new

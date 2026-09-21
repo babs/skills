@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.6.0"
+version: "1.7.0"
 ---
 
 ## Context
@@ -22,12 +22,12 @@ Review as if this code will run in production under heavy load at 3 AM with no o
 - **Logic**: Correctness, edge cases, error handling
 - **Security**: Input validation, injection risks, auth/authz. Anchor findings to recognised standards where they apply — OWASP Top 10 (web) / OWASP API Security Top 10 (APIs), OWASP ASVS for verification depth, and CWE IDs for precise classification. Cover the usual suspects: injection (SQL/NoSQL/command/template), broken access control, SSRF, insecure deserialization, secrets in code or logs, weak/misused crypto, missing rate limiting, and vulnerable dependencies (CVEs) touched by the change.
 - **Performance**: N+1 queries, complexity, resource cleanup
-- **Coherence**: Naming, patterns, architecture alignment
+- **Coherence**: Naming, patterns, architecture alignment — judged per file, not per hunk: after the change, one way of logging, one way of raising and handling errors, one naming scheme. The finding is usually in the lines the diff left untouched
 - **Readability**: keep the cognitive load low, go simple but not naive
 - **Language idiomacy**: check it's coherent with the ecosystem and the general instruction from CLAUDE.md
 - **Check online**: in case of doubt or time inconsistency check online.
 - **Documentation**: if documentation exists (README, guides, etc.), verify accuracy against actual code (endpoints, config, usage examples, CLI flags). Any inconsistency between documentation/specs and actual code or behavior is **High severity at minimum** — never rate it Medium or below
-- **Test and codecov**: if defined in the project, run the test suite and coverage, analyse/complete tests and code cov focussing on functional code; report any failure as a finding
+- **Test and codecov**: if defined in the project, run the test suite and coverage, analyse/complete tests and code cov focussing on functional code; report every failure, replayed on the base per the evidence bar, as a finding
 - **Pre-commit hooks**: if the project defines pre-commit hooks (or equivalent lint/format gates), run them on the changes and report any failure as a finding
 
 <!-- block: review-doctrine -->
@@ -59,6 +59,13 @@ A Critical or High finding must carry **evidence you produced**, not an argument
 
 Findings from reading alone are hypotheses. Ship them as hypotheses.
 
+A measurement is not a number you saw:
+
+- Never run two suites concurrently against a shared resource (database, index, cache, fixture
+  server). A figure from a contaminated run is not a measurement: say so and redo it.
+- A red test is not a finding until it has been replayed on the base resolved above, under the same
+  conditions. Report it as pre-existing or as a regression, never as bare "failing".
+
 ## The fix bar — do not propose decoration
 
 Every fix you propose is one of three tiers. Name the tier.
@@ -87,6 +94,16 @@ file, and an undocumented gotcha. Density is part of it — one line unless the 
 six-line comment wall over a two-line change is a finding, and so is a comment that paraphrases the
 statement below it.
 <!-- /block -->
+
+## Standing lenses — ask these before writing any finding
+
+- **Authorization on every switch.** Any debug, trace or feature toggle whose value comes from
+  outside the process — query string, cookie, request header, environment variable, CLI flag,
+  remote config — *who can set it?* An unauthenticated caller? And what does it unlock: log volume,
+  request and response bodies, PII, a privileged code path?
+- **Ownership of process-wide state.** A function that flips shared state — a class static, a
+  module-level variable, a thread local, a singleton's field, an ambient context — is it reachable
+  from a scope that already set it? Save and restore the previous value; never force one.
 
 ## Output
 
@@ -173,6 +190,9 @@ your inputs back ungraded and let the caller grade. Two axes, never collapsed in
 | **C** | several rescue rounds — the fixes were the least reliable code in the branch |
 | **D** | a guard written here validated nothing, or unverified work was presented as verified |
 | **F** | the defect reached production or the user, and they are the ones who found it |
+
+Applied fixes are the least reviewed code in the branch — re-review them against the same bar before
+grading, and count a defect a fix introduced against the process letter.
 
 **One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
 lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
