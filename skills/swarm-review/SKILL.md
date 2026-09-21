@@ -2,7 +2,7 @@
 name: swarm-review
 description: Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review` — or when a large or cross-cutting change warrants independent review from several angles at once before commit. Dispatches one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage) and consolidates findings.
 allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Bash(echo *), Read, Grep, Glob, Agent, SendMessage
-version: "1.8.0"
+version: "1.9.0"
 ---
 
 # Swarm Review
@@ -56,8 +56,8 @@ For every agent, the prompt MUST include:
 
 | Lens | Stance (operating assumption) | Focus |
 |---|---|---|
-| **security** | *"Assume an adversary reads this code looking for ways to abuse it. What's the cheapest exploit?"* | Input validation, injection (SQL/cmd/template/XSS), authn/authz, secrets in code or logs, crypto misuse, SSRF, deserialization, dependency CVEs touched by the diff, least-privilege regressions. Map findings to OWASP Top 10 / OWASP API Security Top 10 categories and cite CWE IDs; use OWASP ASVS as the checklist for verification depth |
-| **resiliency** | *"Assume this runs at 3 AM during a partial outage. What fails first, and does failure stay contained?"* | Error handling, retry/backoff, timeouts, idempotency, partial-failure paths, resource cleanup, circuit breakers, graceful degradation, race conditions, concurrency, blast radius of failures |
+| **security** | *"Assume an adversary reads this code looking for ways to abuse it. What's the cheapest exploit?"* | Input validation, injection (SQL/cmd/template/XSS), authn/authz, secrets in code or logs, crypto misuse, SSRF, deserialization, dependency CVEs touched by the diff, least-privilege regressions, debug/trace/feature toggles settable from outside the process (query string, cookie, header, env var, CLI flag, remote config) — who can set them and what they unlock. Map findings to OWASP Top 10 / OWASP API Security Top 10 categories and cite CWE IDs; use OWASP ASVS as the checklist for verification depth |
+| **resiliency** | *"Assume this runs at 3 AM during a partial outage. What fails first, and does failure stay contained?"* | Error handling, retry/backoff, timeouts, idempotency, partial-failure paths, resource cleanup, circuit breakers, graceful degradation, race conditions, concurrency, blast radius of failures, ownership of process-wide state (class static, module global, thread local, singleton field, ambient context) — saved and restored by whoever flips it, never forced |
 | **code-quality** | *"Assume a tired teammate inherits this in 6 months. Where will they stumble?"* | Readability, complexity, duplication, dead code, naming, language idioms, simplicity-vs-cleverness, abstraction fit, comments stating a constraint the code cannot show — rationale for a choice belongs in the commit message, and a six-line comment wall over a two-line change is a finding |
 | **functional** | *"Assume the spec/ticket is what users actually need. Does the code do that, or something adjacent?"* | Does the change actually solve the stated problem? Edge cases, off-by-one, boundary conditions, regressions in adjacent features, behavior under empty/null/large inputs |
 | **documentation** | *"Assume the only thing a new user has is the docs. Can they succeed?"* | README, ADRs, API/OpenAPI specs, CLI `--help`, code comments where they state a constraint the code cannot show, CHANGELOG, migration notes; accuracy vs. the new code |

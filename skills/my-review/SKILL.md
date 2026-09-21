@@ -59,7 +59,7 @@ A Critical or High finding must carry **evidence you produced**, not an argument
 
 Findings from reading alone are hypotheses. Ship them as hypotheses.
 
-A measurement is not a number you saw:
+Measurement hygiene:
 
 - Never run two suites concurrently against a shared resource (database, index, cache, fixture
   server). A figure from a contaminated run is not a measurement: say so and redo it.
@@ -169,6 +169,9 @@ the fix scope, and asking here stalls its loop. The menu is for direct `/my-revi
 Apply exactly the selected scope, nothing beyond it. Findings left out of scope stay in the
 printed review as the record of what was consciously waived.
 
+Re-read the applied fixes under the same bar before closing — they are unreviewed code, and their
+scope is the fix hunks, not another feature-wide pass.
+
 Once the selected scope is applied, close the turn with the self-grade below. A review that printed
 findings and applied nothing is not graded.
 
@@ -191,8 +194,7 @@ your inputs back ungraded and let the caller grade. Two axes, never collapsed in
 | **D** | a guard written here validated nothing, or unverified work was presented as verified |
 | **F** | the defect reached production or the user, and they are the ones who found it |
 
-Applied fixes are the least reviewed code in the branch — re-review them against the same bar before
-grading, and count a defect a fix introduced against the process letter.
+A defect a fix introduced counts against the process letter.
 
 **One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
 lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
