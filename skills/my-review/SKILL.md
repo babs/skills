@@ -5,7 +5,7 @@ description: Thorough review of all project changes. Use BEFORE committing featu
 # image, scaffold a throwaway) — a review skill that can only read ships hypotheses. Write is for
 # scratch files; the review itself must not modify the tree under review.
 allowed-tools: Bash, Write, Read, Grep, Glob, WebSearch, WebFetch
-version: "1.7.0"
+version: "1.8.0"
 ---
 
 ## Context
@@ -20,9 +20,9 @@ Review as if this code will run in production under heavy load at 3 AM with no o
 
 - **Functionality**: check the code matches the functional requirement and solves the reason it exists
 - **Logic**: Correctness, edge cases, error handling
-- **Resiliency**: behaviour under partial failure — retry/backoff, timeouts, idempotency, cleanup on the error path, graceful degradation, races and concurrency, blast radius of a failure. Shared state a function flips — class static, module-level variable, thread local, singleton field, ambient context — must be saved and restored by whoever flips it, never forced
+- **Resiliency**: behaviour under partial failure — retry/backoff, timeouts, idempotency, graceful degradation, races and concurrency, blast radius of a failure. Shared state a function flips — class static, module-level variable, thread local, singleton field, ambient context — must be saved and restored by whoever flips it, never forced
 - **Security**: Input validation, injection risks, auth/authz. Anchor findings to recognised standards where they apply — OWASP Top 10 (web) / OWASP API Security Top 10 (APIs), OWASP ASVS for verification depth, and CWE IDs for precise classification. Cover the usual suspects: injection (SQL/NoSQL/command/template), broken access control, SSRF, insecure deserialization, secrets in code or logs, weak/misused crypto, missing rate limiting, and vulnerable dependencies (CVEs) touched by the change. Every debug, trace or feature toggle whose value comes from outside the process — query string, cookie, request header, environment variable, CLI flag, remote config — is an access-control question: who can set it, and what does it unlock (log volume, request and response bodies, PII, a privileged code path)?
-- **Performance**: N+1 queries, complexity, resource cleanup
+- **Performance**: N+1 queries, complexity, resource cleanup — including on the paths that fail
 - **Coherence**: Naming, patterns, architecture alignment — judged per file, not per hunk: after the change, one way of logging, one way of raising and handling errors, one naming scheme. The finding is usually in the lines the diff left untouched
 - **Readability**: keep the cognitive load low, go simple but not naive
 - **Language idiomacy**: check it's coherent with the ecosystem and the general instruction from CLAUDE.md
@@ -55,6 +55,28 @@ A Critical or High finding must carry **evidence you produced**, not an argument
   what it takes; it costs minutes.
 - **Break it on purpose**: delete the fix and confirm the test goes red; inject the drift and confirm the
   check fails. A guard nobody has bypassed is a guard nobody has tested.
+- **Break it in a throwaway worktree, never in the tree under review.** One cut from `HEAD` alone
+  silently tests code you are not reviewing: the uncommitted work is missing from it.
+
+  ```bash
+  # outside the repo: inside it, every grep -r sees each file twice
+  WT="${TMPDIR:-/tmp}/review-wt-$(git rev-parse --short HEAD)-$$"
+  git worktree add --detach -q "$WT" HEAD
+  git diff HEAD --binary | git -C "$WT" apply   # without --binary, one changed binary file kills the patch
+  git ls-files --others --exclude-standard -z |
+    while IFS= read -r -d '' f; do mkdir -p "$WT/$(dirname "$f")"; cp "$f" "$WT/$f"; done
+  # … break it there, then:
+  git worktree remove --force "$WT"
+  ```
+
+  Collect what a dead run left. Removing worktrees is the only destructive step here, so remove
+  exactly what this prints, and nothing else. Every other worktree carries someone's work.
+
+  ```bash
+  git worktree list --porcelain | awk '/^worktree /{p=$2} /^detached$/{if (p ~ /\/review-wt-/) print p}'
+  ```
+
+  `git worktree prune` drops registrations whose directory is already gone, nothing else.
 - Cannot run it? Say `[unverified]` in the finding. That is honest and useful. Silently implying you ran
   it is neither.
 
