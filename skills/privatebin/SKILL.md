@@ -106,3 +106,5 @@ The file has the shape:
 - **`--bin ""` is the same as omitting `--bin`** — both pick the entry whose `name` is empty in the config.
 - **No round-trip with `--attachment`.** Attachments are uploaded as opaque blobs; `privatebin show` returns metadata, not the original file path.
 - **Cheap to retry.** Wrong content → re-run with the corrected payload, then `curl -sL` the previous delete URL to revoke the bad one.
+
+<!-- deliberate unbumped edit: proves the gate goes red in CI -->
