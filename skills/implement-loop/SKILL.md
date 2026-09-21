@@ -8,7 +8,7 @@ description: >-
   loop per phase, with a human checkpoint at merge. Mode not stated → ask one question, supervised
   (ship-feature) or autonomous (this skill); never default to either loop.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.5.0"
+version: "1.6.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -89,6 +89,8 @@ Run a review pass with `my-review` (focused), `iterative-review` (converge fix r
   paths that only fire at runtime, resource cleanup on failure.
 - A finding is **addressed** only when its edge cases are handled **or** explicitly **waived with
   reasoning**. Every waiver goes on the unaddressed-points list — never silent.
+- **Re-run 1.3 on what you just changed** before 1.5 — a fix is unreviewed code, and 1.5 is a
+  coherence read, not a review.
 
 ### 1.5 Coherence check (last gate before commit)
 A deliberate end-to-end read of the slice's logic: does it actually do what it claims; are all edges
@@ -172,6 +174,8 @@ your inputs back ungraded and let the caller grade. Two axes, never collapsed in
 | **C** | several rescue rounds — the fixes were the least reliable code in the branch |
 | **D** | a guard written here validated nothing, or unverified work was presented as verified |
 | **F** | the defect reached production or the user, and they are the ones who found it |
+
+A defect a fix introduced counts against the process letter.
 
 **One mandatory line: what the machinery caught that I did not** — the finding and its catcher (a
 lens, a re-run, a question the user asked). `Nothing` is valid only when no round produced a new
