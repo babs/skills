@@ -574,5 +574,159 @@ class ValidateSkillsTest(unittest.TestCase):
         self.assertEqual(run(self.root).returncode, 0)
 
 
+def git(root: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@example.invalid",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@example.invalid",
+        },
+    )
+
+
+class VersionBumpGateTest(unittest.TestCase):
+    """Check 4c: a SKILL.md edited since the base must declare a higher version."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        make_tree(self.root)
+        git(self.root, "init", "-q")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "base")
+        # The gate resolves its base through a remote-tracking ref; a bare update-ref is the
+        # cheapest stand-in for `origin` and exercises the same lookup.
+        git(self.root, "update-ref", "refs/remotes/origin/master", "HEAD")
+
+    def _skill(self, name: str = "demo") -> Path:
+        return self.root / "skills" / name / "SKILL.md"
+
+    def _edit(self, path: Path, version: str | None) -> None:
+        text = path.read_text() + "\nedited\n"
+        if version is not None:
+            text = text.replace('version: "1.0.0"', f'version: "{version}"')
+        path.write_text(text)
+
+    def test_edit_without_bump_fails(self) -> None:
+        self._edit(self._skill(), None)
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("skills/demo/SKILL.md changed since", r.stdout)
+
+    def test_edit_with_bump_passes(self) -> None:
+        self._edit(self._skill(), "1.1.0")
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_patch_bump_passes(self) -> None:
+        # sort -V must order 1.0.0 < 1.0.1 — a plain string compare would too, which is why the
+        # next test (10 vs 9) is the one that pins the version sort.
+        self._edit(self._skill(), "1.0.1")
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_two_digit_minor_is_not_compared_as_a_string(self) -> None:
+        self._edit(self._skill(), "1.10.0")
+        self.assertEqual(run(self.root).returncode, 0, "1.10.0 > 1.9.0 numerically, not lexically")
+
+    def test_downgrade_fails(self) -> None:
+        self._edit(self._skill(), "0.9.0")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("(base: 1.0.0)", r.stdout)
+
+    def test_committed_edit_is_caught_too(self) -> None:
+        # The convention is one bump per PR, so the gate compares against the base, not HEAD:
+        # committing the unbumped edit must not launder it.
+        self._edit(self._skill(), None)
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "edit")
+        self.assertEqual(run(self.root).returncode, 1)
+
+    def test_second_commit_needs_no_second_bump(self) -> None:
+        self._edit(self._skill(), "1.1.0")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "bumped")
+        self._edit(self._skill(), None)  # more work on the same branch, version already moved
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_non_skill_edit_passes(self) -> None:
+        (self.root / "rules" / "python.md").write_text(GOOD_RULE + "\nmore prose\n")
+        self.assertEqual(run(self.root).returncode, 0)
+
+    def test_new_skill_needs_no_bump(self) -> None:
+        new = self.root / "skills" / "fresh" / "SKILL.md"
+        new.parent.mkdir()
+        new.write_text(GOOD_SKILL)
+        git(self.root, "add", "-A")
+        self.assertEqual(run(self.root).returncode, 0, "absent at the base = nothing to bump")
+
+    def test_only_the_unbumped_skill_is_named(self) -> None:
+        second = self.root / "skills" / "other" / "SKILL.md"
+        second.parent.mkdir()
+        second.write_text(GOOD_SKILL)
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "second skill")
+        git(self.root, "update-ref", "refs/remotes/origin/master", "HEAD")
+        self._edit(self._skill(), "1.1.0")
+        self._edit(second, None)
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("skills/other/SKILL.md changed since", r.stdout)
+        self.assertNotIn("skills/demo/SKILL.md changed since", r.stdout)
+
+    def test_version_line_removed_fails(self) -> None:
+        skill = self._skill()
+        skill.write_text(skill.read_text().replace('version: "1.0.0"\n', "") + "\nedited\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("no 'version:", r.stdout)
+
+    def test_unresolvable_base_fails_loudly(self) -> None:
+        # A shallow CI checkout has no remote-tracking ref: the gate must fail, never skip green.
+        git(self.root, "update-ref", "-d", "refs/remotes/origin/master")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("fetch-depth", r.stdout)
+
+    def test_tree_without_git_skips(self) -> None:
+        shutil.rmtree(self.root / ".git")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("version-bump gate SKIPPED", r.stdout)
+
+    def test_copy_under_a_foreign_repo_skips(self) -> None:
+        # `rev-parse --git-dir` answers for any ancestor repo, so an installed or vendored copy
+        # would otherwise be diffed against a repository that never held these files.
+        shutil.rmtree(self.root / ".git")
+        outer = Path(self._tmp.name).parent / f"outer-{os.getpid()}"
+        outer.mkdir()
+        self.addCleanup(shutil.rmtree, outer, True)
+        git(outer, "init", "-q")
+        git(outer, "commit", "-q", "--allow-empty", "-m", "outer")
+        shutil.move(str(self.root), str(outer / "vendored"))
+        r = run(outer / "vendored")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("version-bump gate SKIPPED", r.stdout)
+
+    def test_version_in_a_fenced_example_is_not_the_skill_version(self) -> None:
+        # The frontmatter is the only place a skill declares its version; an example in the body
+        # must not stand in for it — read as a version, it turns an edit into a false failure.
+        skill = self._skill()
+        skill.write_text(
+            skill.read_text().replace('version: "1.0.0"\n', "")
+            + '\n```yaml\nversion: "1.0.0"\n```\n'
+        )
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "no frontmatter version")
+        git(self.root, "update-ref", "refs/remotes/origin/master", "HEAD")
+        skill.write_text(skill.read_text() + "\nedited\n")
+        r = run(self.root)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

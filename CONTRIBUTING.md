@@ -95,6 +95,18 @@ Bumping one is all-or-nothing: `scripts/validate-skills.sh` fails when the same 
 files (uv, python/node/golang/rust/postgres base images, distroless). Change every occurrence in one
 commit.
 
+## Per-skill `version:` — gated, not remembered
+
+A `skills/*/SKILL.md` whose bytes changed since the merge-base must declare a **higher** `version:`;
+`scripts/validate-skills.sh` fails otherwise (check 4c). It compares against the base, not `HEAD` —
+the convention is one bump per PR, so later commits on the same branch need no second bump. A skill
+that only receives a propagated shared block still counts: its bytes changed, consumers pin nothing,
+and the frontmatter version is the only signal that an installed skill moved.
+
+The gate needs the merge-base: CI checks out with `fetch-depth: 0`, and a repo whose
+`origin/<default-branch>` is missing fails rather than skipping green. A tree that is not a git
+repository (a tarball export, the unit tests' scratch trees) says so and skips.
+
 ## Bump the bundled `db_migrate.py`
 
 `skills/fullstack-init/db_migrate.py` is [babs/db_migrate](https://github.com/babs/db_migrate) at a
@@ -187,8 +199,8 @@ claude plugin validate .
 
 # What CI runs — the local hook invokes scripts/validate-skills.sh: frontmatter; rule and skill
 # references AND the sections they point at; the Go build-var set agreeing between rules/golang.md
-# and go-init; block drift incl. both gates' own unit tests; pin uniformity; retired md2clip command
-# forms plus md2clip --selftest; the review templates' finding typography
+# and go-init; block drift incl. both gates' own unit tests; pin uniformity; the per-skill version
+# bump; retired md2clip command forms plus md2clip --selftest; the review templates' finding typography
 pre-commit run --all-files
 ```
 

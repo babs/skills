@@ -15,7 +15,8 @@ ones most easily got wrong — they override any habit or harness default.
   (2) `git tag vX.Y.Z && git push origin vX.Y.Z`. Do not bundle a version bump into feature work, do
   not create the GitHub release yourself.
 - Per-skill `version:` frontmatter is a *separate* thing — bump it in the feature PR that changes that
-  skill. Only the plugin-level `plugin.json` version is tag-owned.
+  skill, propagated shared blocks included; `validate-skills.sh` check 4c fails the PR otherwise.
+  Only the plugin-level `plugin.json` version is tag-owned.
 
 ## Rules and skills are read by models — write for them
 
