@@ -268,31 +268,54 @@ fi
 #     silent edit ships as the version someone already has. Compared against the BASE, not HEAD —
 #     the convention is one bump per PR, so later commits on the same branch need no re-bump.
 #     No git repo of its own (a tarball export, a copy vendored under someone else's repo, the
-#     unit tests' scratch trees) = nothing to compare: note and skip. A repo whose base cannot be resolved IS a failure — a shallow CI checkout would
-#     otherwise disarm the gate while staying green (CI needs `fetch-depth: 0`).
+#     unit tests' scratch trees) = nothing to compare: note and skip. A repo whose base cannot be
+#     resolved IS a failure — a shallow CI checkout would otherwise disarm the gate while staying
+#     green. CI hands the base over (GitLab `CI_MERGE_REQUEST_DIFF_BASE_SHA`, the GitHub pull_request
+#     payload), so a merge-request pipeline needs one commit, never the history: the `GIT_DEPTH` /
+#     `fetch-depth` full clone is only the fallback for branch pipelines and local runs.
 # Frontmatter only: a `version:` shown in a fenced example must never be read as the skill's.
 skill_version() { awk 'NR==1 && $0!="---"{exit} NR>1 && $0=="---"{exit} NR>1' \
   | sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/p' | head -1; }
-if [[ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" != "$(cd "$ROOT" && pwd -P)" ]]; then
+# Seam: the unit tests point this at a name that does not exist to reach the branch below.
+GIT="${VALIDATE_SKILLS_GIT_BIN:-git}"
+if ! command -v "$GIT" >/dev/null 2>&1; then
+  # A checkout we cannot read is not the same as no checkout: the first silently disarms the gate,
+  # and a CI image without git did exactly that once.
+  if [[ -e "$ROOT/.git" ]]; then
+    echo "ERROR: version-bump gate: git is not installed, and $ROOT is a checkout — install git"
+    rc=1
+  else
+    echo "note: version-bump gate SKIPPED (git not installed, and no checkout here)"
+  fi
+elif [[ "$("$GIT" -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" != "$(cd "$ROOT" && pwd -P)" ]]; then
   # Not this repo's root: an installed or vendored copy sitting under someone else's repo would
   # otherwise be compared against that repo's history.
   echo "note: version-bump gate SKIPPED (no git repository at the plugin root)"
 else
-  base=""
+  # CI knows the base and says so, which costs one object instead of the whole history.
+  base="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}"
+  if [[ -z "$base" && -f "${GITHUB_EVENT_PATH:-}" ]]; then
+    base="$(python3 -c 'import json,os;print(json.load(open(os.environ["GITHUB_EVENT_PATH"])).get("pull_request",{}).get("base",{}).get("sha",""))' 2>/dev/null || true)"
+  fi
+  # The commit itself may be missing from a shallow clone; one object, not a deepening.
+  if [[ -n "$base" ]] && ! "$GIT" -C "$ROOT" cat-file -e "${base}^{commit}" 2>/dev/null; then
+    "$GIT" -C "$ROOT" fetch -q --depth=1 origin "$base" 2>/dev/null || base=""
+  fi
   for ref in origin/develop origin/trunk origin/main origin/master; do
-    git -C "$ROOT" rev-parse --verify --quiet "$ref" >/dev/null || continue
-    base="$(git -C "$ROOT" merge-base "$ref" HEAD 2>/dev/null || true)"
-    [[ -n "$base" ]] && break
+    [[ -z "$base" ]] || break
+    "$GIT" -C "$ROOT" rev-parse --verify --quiet "$ref" >/dev/null || continue
+    base="$("$GIT" -C "$ROOT" merge-base "$ref" HEAD 2>/dev/null || true)"
   done
   if [[ -z "$base" ]]; then
-    echo "ERROR: version-bump gate: no merge-base against origin/{develop,trunk,main,master}"
-    echo "  shallow clone (CI needs 'fetch-depth: 0') or no remote ref yet (git fetch origin master)."
+    echo "ERROR: version-bump gate: no base to compare against"
+    echo "  outside a merge-request pipeline the check needs history: set GIT_DEPTH: 0 (GitLab) or"
+    echo "  fetch-depth: 0 (GitHub), or fetch the default branch locally (git fetch origin master)."
     rc=1
   else
     while IFS= read -r skill; do
       [[ -n "$skill" ]] || continue
       # `|| true`: absent at the base exits 128, and pipefail would abort the whole script.
-      old="$(git -C "$ROOT" show "$base:$skill" 2>/dev/null | skill_version || true)"
+      old="$("$GIT" -C "$ROOT" show "$base:$skill" 2>/dev/null | skill_version || true)"
       # Absent at the base = a new skill (a rename included): nothing to compare against.
       [[ -n "$old" ]] || continue
       new="$(skill_version <"$ROOT/$skill")"
@@ -303,7 +326,7 @@ else
         echo "ERROR: $skill changed since ${base:0:8} but version is $new (base: $old) — bump it"
         rc=1
       fi
-    done < <(git -C "$ROOT" diff --name-only --diff-filter=d "$base" -- 'skills/*/SKILL.md')
+    done < <("$GIT" -C "$ROOT" diff --name-only --diff-filter=d "$base" -- 'skills/*/SKILL.md')
   fi
 fi
 

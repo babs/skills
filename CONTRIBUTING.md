@@ -103,9 +103,14 @@ the convention is one bump per PR, so later commits on the same branch need no s
 that only receives a propagated shared block still counts: its bytes changed, consumers pin nothing,
 and the frontmatter version is the only signal that an installed skill moved.
 
-The gate needs the merge-base: CI checks out with `fetch-depth: 0`, and a repo whose
-`origin/<default-branch>` is missing fails rather than skipping green. A tree that is not a git
-repository (a tarball export, the unit tests' scratch trees) says so and skips.
+The gate needs a base, and takes the cheapest one on offer: `CI_MERGE_REQUEST_DIFF_BASE_SHA` on
+GitLab, the `pull_request` payload on GitHub, then a merge-base against `origin/<default-branch>`.
+The first two cost one object — `git fetch --depth=1 origin <sha>` — so a merge-request pipeline
+never needs the history, and `GIT_DEPTH: 0` / `fetch-depth: 0` is only the fallback for branch
+pipelines. No base at all fails rather than skipping green. A tree that is not a git repository (a
+tarball export, the unit tests' scratch trees) says so and skips; a checkout with **no `git`
+installed** fails, because reporting that as "no repository" is how the gate silently stopped
+gating in a CI image once.
 
 ## Bump the bundled `db_migrate.py`
 
