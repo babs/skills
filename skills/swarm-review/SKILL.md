@@ -1,8 +1,8 @@
 ---
 name: swarm-review
 description: Use when the user asks for a "swarm review", "multi-angle review", "parallel review", "review from all perspectives", or `/swarm-review` — or when a large or cross-cutting change warrants independent review from several angles at once before commit. Dispatches one focused agent per angle (security, resiliency, code quality, functional, documentation, global coherence, tests/coverage) and consolidates findings.
-allowed-tools: Bash(git diff *), Bash(git status *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Bash(echo *), Read, Grep, Glob, Agent, SendMessage
-version: "1.9.0"
+allowed-tools: Bash(git diff *), Bash(git status *), Bash(git worktree *), Bash(git log *), Bash(git rev-parse *), Bash(git merge-base *), Bash(git branch *), Bash(gh pr *), Bash(glab mr view *), Bash(glab mr diff *), Bash(echo *), Read, Grep, Glob, Agent, SendMessage
+version: "1.10.0"
 ---
 
 # Swarm Review
@@ -30,7 +30,7 @@ If the scope is empty (no diff, no files), stop and tell the user — don't spaw
 
 ## Spawn the swarm
 
-Send **one** message with **seven** `Agent` tool uses in parallel. Use `subagent_type: "general-purpose"` (read-only investigation, full tool access for grep/read/web). Each prompt must be self-contained: the agent has no view of this conversation.
+Send **one** message with **seven** `Agent` tool uses in parallel. Use `subagent_type: "general-purpose"` (full tool access for grep/read/web; the exclusive resource belongs to the token holder below). Each prompt must be self-contained: the agent has no view of this conversation.
 
 Pass `run_in_background: false` on all seven — when the harness honours it, each call returns its lens report as the tool result, which is the cleanest collection path. **Do not assume it took.** A spawn result saying the agent is now running, or that it will receive instructions via its mailbox, means the call was backgrounded regardless and that report will arrive later as a message. Read each spawn result and know which mode you are in: background agents report through notifications that arrive interleaved, out of order, and alongside idle/availability events that look like completion but carry no findings. The collection ledger below is what makes either mode safe — it is not optional in the synchronous case either.
 
@@ -49,6 +49,13 @@ For every agent, the prompt MUST include:
   whatever they need to do that: a scratch dir, the repo path, whether `docker`/`make`/network are
   available. **A swarm that only reads is a swarm of plausible opinions** — and plausible opinions are
   precisely what shipped the last six defects.
+- **Execution token** — `tests-coverage` alone runs the suite and anything else needing an exclusive
+  resource (database, port, fixture server, build cache). Seven suites against one database measure
+  nothing. Any other lens needing such a run says so
+  and labels the finding `[unverified]`. Everything else stays open to every lens: break a guard in
+  your own worktree, never in the tree under review — no mutation, no worktree; remove it as soon as
+  the check is done. Recipe and collection filter: `skills/my-review/SKILL.md` ("The evidence bar");
+  put your lens in the name, `review-wt-<short-sha>-<lens>-$$`.
 - **Prior-round context** (re-reviews only) — list what the previous round fixed, and instruct: *"verify
   those fixes hold; hunt for what they introduced."* Fixes are unreviewed code.
 
@@ -65,6 +72,10 @@ For every agent, the prompt MUST include:
 | **tests-coverage** | *"Assume someone refactors this next sprint without reading the tests. Will the tests catch the breakage?"* | Are new code paths tested? Are edge cases covered? Test quality (no over-mocking, deterministic, fast), missing regression tests for the bug being fixed, coverage of error paths |
 
 The per-agent **Execution mandate** above IS the evidence bar (canonical: `skills/my-review/SKILL.md` ("The evidence bar")) — it reaches the sub-agents through their prompts; the consolidator itself only merges and never files unverified findings of its own.
+
+**Sweep worktrees before spawning and after collecting** — the selection command is in
+`skills/my-review/SKILL.md` ("The evidence bar"); `git worktree remove --force` what it prints. A
+dead agent's worktree belongs to nobody, and an unswept one survives until someone notices.
 
 ## Collect — a lens has delivered only when its findings are in hand
 

@@ -2,7 +2,7 @@
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.6.0"
+version: "1.7.0"
 ---
 
 ## Task
@@ -115,6 +115,28 @@ A Critical or High finding must carry **evidence you produced**, not an argument
   what it takes; it costs minutes.
 - **Break it on purpose**: delete the fix and confirm the test goes red; inject the drift and confirm the
   check fails. A guard nobody has bypassed is a guard nobody has tested.
+- **Break it in a throwaway worktree, never in the tree under review.** One cut from `HEAD` alone
+  silently tests code you are not reviewing: the uncommitted work is missing from it.
+
+  ```bash
+  # outside the repo: inside it, every grep -r sees each file twice
+  WT="${TMPDIR:-/tmp}/review-wt-$(git rev-parse --short HEAD)-$$"
+  git worktree add --detach -q "$WT" HEAD
+  git diff HEAD --binary | git -C "$WT" apply   # without --binary, one changed binary file kills the patch
+  git ls-files --others --exclude-standard -z |
+    while IFS= read -r -d '' f; do mkdir -p "$WT/$(dirname "$f")"; cp "$f" "$WT/$f"; done
+  # … break it there, then:
+  git worktree remove --force "$WT"
+  ```
+
+  Collect what a dead run left. Removing worktrees is the only destructive step here, so remove
+  exactly what this prints, and nothing else. Every other worktree carries someone's work.
+
+  ```bash
+  git worktree list --porcelain | awk '/^worktree /{p=$2} /^detached$/{if (p ~ /\/review-wt-/) print p}'
+  ```
+
+  `git worktree prune` drops registrations whose directory is already gone, nothing else.
 - Cannot run it? Say `[unverified]` in the finding. That is honest and useful. Silently implying you ran
   it is neither.
 
