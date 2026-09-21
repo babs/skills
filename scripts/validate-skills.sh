@@ -9,6 +9,7 @@
 #      and (4b) the bundled db_migrate.py's __version__ is the one rules/postgres.md states,
 #      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
 #      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest),
+#   4c. a skills/*/SKILL.md changed since the merge-base carries a higher `version:`,
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
 #   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent)
 #      and every finding still carries a fix line.
@@ -259,6 +260,50 @@ if [[ -f "$ROOT/$DBM_RULE" || -f "$ROOT/$DBM_FILE" ]]; then
       echo "ERROR: db_migrate version drift — ${DBM_RULE} states ${claimed#babs/db_migrate }, ${DBM_FILE} is v${actual}; bump them together"
       rc=1
     fi
+  fi
+fi
+
+# 4c. A skill whose bytes changed since the merge-base must carry a higher `version:`. Consumers
+#     pin nothing: the frontmatter version is the only signal that an installed skill moved, so a
+#     silent edit ships as the version someone already has. Compared against the BASE, not HEAD —
+#     the convention is one bump per PR, so later commits on the same branch need no re-bump.
+#     No git repo of its own (a tarball export, a copy vendored under someone else's repo, the
+#     unit tests' scratch trees) = nothing to compare: note and skip. A repo whose base cannot be resolved IS a failure — a shallow CI checkout would
+#     otherwise disarm the gate while staying green (CI needs `fetch-depth: 0`).
+# Frontmatter only: a `version:` shown in a fenced example must never be read as the skill's.
+skill_version() { awk 'NR==1 && $0!="---"{exit} NR>1 && $0=="---"{exit} NR>1' \
+  | sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/p' | head -1; }
+if [[ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" != "$(cd "$ROOT" && pwd -P)" ]]; then
+  # Not this repo's root: an installed or vendored copy sitting under someone else's repo would
+  # otherwise be compared against that repo's history.
+  echo "note: version-bump gate SKIPPED (no git repository at the plugin root)"
+else
+  base=""
+  for ref in origin/develop origin/trunk origin/main origin/master; do
+    git -C "$ROOT" rev-parse --verify --quiet "$ref" >/dev/null || continue
+    base="$(git -C "$ROOT" merge-base "$ref" HEAD 2>/dev/null || true)"
+    [[ -n "$base" ]] && break
+  done
+  if [[ -z "$base" ]]; then
+    echo "ERROR: version-bump gate: no merge-base against origin/{develop,trunk,main,master}"
+    echo "  shallow clone (CI needs 'fetch-depth: 0') or no remote ref yet (git fetch origin master)."
+    rc=1
+  else
+    while IFS= read -r skill; do
+      [[ -n "$skill" ]] || continue
+      # `|| true`: absent at the base exits 128, and pipefail would abort the whole script.
+      old="$(git -C "$ROOT" show "$base:$skill" 2>/dev/null | skill_version || true)"
+      # Absent at the base = a new skill (a rename included): nothing to compare against.
+      [[ -n "$old" ]] || continue
+      new="$(skill_version <"$ROOT/$skill")"
+      if [[ -z "$new" ]]; then
+        echo "ERROR: $skill changed but has no 'version: \"X.Y.Z\"' line"
+        rc=1
+      elif [[ "$new" == "$old" ]] || [[ "$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -1)" != "$new" ]]; then
+        echo "ERROR: $skill changed since ${base:0:8} but version is $new (base: $old) — bump it"
+        rc=1
+      fi
+    done < <(git -C "$ROOT" diff --name-only --diff-filter=d "$base" -- 'skills/*/SKILL.md')
   fi
 fi
 
