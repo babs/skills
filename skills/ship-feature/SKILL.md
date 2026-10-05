@@ -9,7 +9,7 @@ description: >-
   work and leaves — use implement-loop instead, even when a specs/ file exists. Mode not stated →
   ask one question, supervised or autonomous; never default to either loop.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.7.0"
+version: "1.8.0"
 ---
 
 # Ship a feature — the quality loop
@@ -29,11 +29,16 @@ implement → tests → run tests → my-review → fix ALL → my-review (clean
    chat message; that is how you build the wrong thing very efficiently.
 2. **Refuse a spec with open questions.** Status must be `approved` and the Open questions list empty.
    If it is not, surface it and stop.
-3. **Read the code you are about to change**, plus `AGENTS.md` and the applicable rules. Match the
+3. **Check the ACs.** ACs not numbered, a phase without **Covers**, an AC not struck through under
+   no **Covers**, or a spec kept outside this repo with no `**AC prefix**` line → ask the user:
+   upgrade the spec, or go on without AC tracking. Upgrade → once the branch exists, add what is
+   missing, show it, wait for approval. AC tracking is on when the ACs are numbered and the user
+   did not decline it.
+4. **Read the code you are about to change**, plus `AGENTS.md` and the applicable rules. Match the
    surrounding style — a feature that reads like a foreign body is a review finding on its own.
-4. **Branch.** Feature work never lands on the default branch directly.
+5. **Branch.** Feature work never lands on the default branch directly.
 
-5. **Set `Status: in progress`** on the spec as you start phase 1 — a half-built spec that still reads
+6. **Set `Status: in progress`** on the spec as you start phase 1 — a half-built spec that still reads
    `approved` is indistinguishable from one nobody has touched.
 
 Work **one phase at a time**. A phase ends green and committed before the next one starts, so every
@@ -56,7 +61,9 @@ Comments explain **why**, never what.
 
 ## 2. Write the tests
 
-Tests come from the **acceptance criteria** — each one becomes at least one test. Then go past them:
+Tests come from the **acceptance criteria** — each one becomes at least one test. With AC tracking on,
+the test cites its AC in a comment or docstring as `NNN-AC3`, or `<prefix>-NNN-AC3` when the spec
+header has an `**AC prefix**` line, say `ACME-027-AC3`. Then go past them:
 
 - The happy path (one test, quickly written, weakly informative).
 - **The edges — this is where the value is**: empty input, missing/null fields, no permission, no
@@ -154,7 +161,10 @@ Never lower a floor to turn a red build green. New code arrives with its tests. 
 (asserting nothing, testing getters) is worse than a low number, because it lies.
 
 The phase's **DoD from the spec** is now checked explicitly — state it, and say whether it is met. Not
-met → back to step 1.
+met → back to step 1. With AC tracking on, for each AC under the phase's **Covers** that is not struck
+through, run `grep -rE '(^|[^A-Za-z0-9_-])NNN-AC3($|[^A-Za-z0-9_])'` on the test files, with
+the prefix when the spec has one. Keep the pattern: `grep -w` matches `ACME-NNN-AC3` too. No test
+citing it → back to step 2.
 
 ## 9. Commit — `smart-commit`
 
@@ -165,16 +175,17 @@ No AI/assistant attribution anywhere in the message.
 
 Repeat for each phase. When all phases are done:
 
-- Tick the acceptance criteria in the spec, set `Status: shipped`, update `specs/README.md`.
+- Tick the acceptance criteria that are not struck through, set `Status: shipped`, update
+  `specs/README.md`.
 - Update `docs/` if the architecture or data model actually changed.
 - Prepare the MR/PR. **Merging is the human's call** — machine self-review is signal, not merge
   authority. Propose the push/MR and wait for the go-ahead.
 
 ## Output
 
-Report per phase: what was built, tests added, review rounds and what they found, the coverage delta,
-the DoD verdict, and the commit. List every waived finding explicitly — the user decides whether a
-waiver is acceptable, not you.
+Report per phase: what was built, tests added, the ACs covered when AC tracking is on, review rounds
+and what they found, the coverage delta, the DoD verdict, and the commit. List every waived finding
+explicitly — the user decides whether a waiver is acceptable, not you.
 
 Self-grade the phase per the block below. The process letter covers the phase's whole record —
 the review rounds included, not just the state the last commit left behind.

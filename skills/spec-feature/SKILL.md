@@ -9,7 +9,7 @@ description: >-
   (the user stays and approves each fix scope) or implement-loop (runs every phase alone, the user
   reviews at the merge). Offer both; never pick one for the user.
 allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # Spec a feature before building it
@@ -75,29 +75,35 @@ request. No SQL, no class names.
 
 ## Acceptance criteria
 
-Checkable statements. Each one becomes a test.
+Checkable statements. Each one becomes a test. Number them `AC1`, `AC2`, … and never renumber. A
+dropped AC keeps its number, struck through as `- [ ] ~~**AC4** …~~`. Cite `AC3` inside this file
+and `NNN-AC3` outside it, `<prefix>-NNN-AC3` when the header has an `**AC prefix**: <prefix>` line.
 
-- [ ] Given <state>, when <action>, then <observable outcome>.
-- [ ] An unauthenticated user gets a 401 on <route>.
-- [ ] An empty result set renders "<empty message>", not a spinner or an error.
+- [ ] **AC1** Given <state>, when <action>, then <observable outcome>.
+- [ ] **AC2** An unauthenticated user gets a 401 on <route>.
+- [ ] **AC3** An empty result set renders "<empty message>", not a spinner or an error.
 
 ## Phases
 
 Each phase is independently shippable and ends green. The DoD is a command or an observation — never
-"looks good".
+"looks good". Every phase declares **Covers**, `none` when it covers no AC. Every AC not struck
+through appears under the **Covers** of at least one phase.
 
 ### Phase 1 — <name>
 - Work: <what gets built>
+- **Covers**: <AC1, AC2>
 - **Data model impact**: <none | the tables/columns THIS phase changes>
 - **DoD**: <e.g. migration applies on a fresh DB; `pytest tests/test_model.py` green; `make coverage` passes its floor>
 
 ### Phase 2 — <name>
 - Work: …
+- **Covers**: <AC3>
 - **Data model impact**: <none | …>
 - **DoD**: <e.g. `POST /export` returns 202 + a job id; error path returns 400 with a typed body>
 
 ### Phase 3 — <name>
 - Work: …
+- **Covers**: <none | …>
 - **Data model impact**: <none | …>   <!-- EVERY phase declares it — ship-feature keys on this field -->
 - **DoD**: <e.g. clicking Export downloads a file; vitest covers the click and the failure toast>
 
