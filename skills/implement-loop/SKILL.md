@@ -8,7 +8,7 @@ description: >-
   loop per phase, with a human checkpoint at merge. Mode not stated → ask one question, supervised
   (ship-feature) or autonomous (this skill); never default to either loop.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.6.0"
+version: "1.7.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -23,6 +23,17 @@ escalate on design forks, human-gate the merge, never let findings rot.
 2. **Extract phases + per-phase definition-of-done (DoD).** Use the handoff's if present. If DoD is
    missing or vague, **derive candidates and confirm with the user** — "done" must be checkable (a
    test green, a metric moved, a command exits 0), never a vibe.
+   - Source with numbered acceptance criteria, `AC1`, `AC2`, … → extract them per phase too. Cite
+     one as `<source id>-AC3`: `027-AC3` for spec 027, `PROJ-123-AC3` for a ticket, `ACME-027-AC3`
+     when the spec header has an `**AC prefix**` line. Numbered ACs in a source with no id →
+     agree an id in the §0.6 batch.
+   - A source other than a spec-feature spec, with a numbered AC under no phase → assign it and
+     confirm in the §0.6 batch.
+   - A spec-feature spec with ACs not numbered, a phase without **Covers**, an AC not struck
+     through under no **Covers**, or kept outside this repo with no `**AC prefix**` line → ask in
+     the §0.6 batch: upgrade the spec, or run without AC tracking. Upgrade → once the branch
+     exists, add what is missing, show it, wait for approval.
+   - AC tracking is on when the ACs are numbered and the user did not decline it.
 3. **Branch / worktree.** Create the feature branch off the stated base. One branch for the effort;
    per-slice commits land on it.
    - **Isolated worktree (default when the user asks, or when the main checkout is dirty / in use):**
@@ -50,6 +61,9 @@ escalate on design forks, human-gate the merge, never let findings rot.
    nowhere else — no drip-feed of routine questions. This governs *questions* only: the mandatory
    **safety stops are never skipped** — a broken upstream hook (§1.2) and the push/merge gate (§5)
    are not "questions" and still halt the loop for explicit authorization.
+7. **Mark the spec.** A spec-feature spec → set `Status: in progress` as phase 1 starts. Spec kept
+   outside this repo → edit it where it is, never commit it, and list every edit made to it in the
+   §7 report.
 
 ## 1. The loop (per phase, and per reviewable slice within a phase)
 
@@ -62,6 +76,8 @@ Implement the smallest change that moves toward the phase DoD and can stand alon
 code style; comments explain WHY, not WHAT.
 
 ### 1.2 Test + DUAL guards (both, every iteration — not just one)
+- With AC tracking on, each test written for an AC cites it as `<source id>-AC3` in a comment or
+  docstring.
 - Run the **test suite**, `pre-commit run --all-files` (if configured), and **coverage** — coverage
   must **not decrease** vs baseline (a floor, not decoration).
 - A `Dockerfile` in the tree makes the **image a gate**: `make docker-build` on every iteration that
@@ -109,6 +125,11 @@ Next slice / next phase.
 ## 2. Definition of done (gate between phases)
 Do not advance until the current phase's **measurable** DoD is met: structural guard satisfied,
 behavioral guard passing, suite + coverage green. State the DoD check explicitly when closing a phase.
+With AC tracking on, the phase also needs a test citing each AC it covers that is not struck through.
+For each one run `grep -rE '(^|[^A-Za-z0-9_-])<source id>-AC3($|[^A-Za-z0-9_])'` on the test files.
+Keep the pattern: `grep -w '027-AC3'` matches `ACME-027-AC3` too. No test citing it → back to 1.2,
+never waived. Untestable → stop and ask, as in §3. List the phase's ACs in the phase-close note of
+§4.
 Self-grade the phase per the block below; the loop-wide grade at §7 is a separate one.
 
 ## 3. Escalation — stop and ASK, do not guess
@@ -151,6 +172,9 @@ result. This skill is the disciplined outer loop; a parallel executor is one pri
 The loop ends when all phases meet DoD, the unaddressed list is empty or every remaining item is a
 recorded conscious waiver, both guards pass on the final state, and the MR is prepared for human
 review. Report: phases done, final guard/coverage state, the unaddressed/waived list, and the MR link.
+With AC tracking on, list each AC not struck through with the test that cites it. A spec-feature
+spec → tick the ACs not struck through, set `Status: shipped`, update `specs/README.md`, and commit
+them before preparing the MR.
 If an isolated worktree was used, leave it in place until the user confirms the merge, then propose
 its removal (`git worktree remove <path>`) as a gated step — never auto-remove unmerged work.
 
