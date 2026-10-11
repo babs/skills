@@ -78,8 +78,9 @@ full plugin install anyway (rules/ present), so "must stand alone" is not a reas
 
 **The canonical block wins.** Change it there; run `--fix`; commit both. Skills may declare blocks too
 (e.g. `skills/my-review/SKILL.md#review-doctrine`, mechanically included by `iterative-review`;
-`swarm-review` references it in prose through its per-agent execution mandate) — same mechanism,
-same gate.
+`swarm-review` references it in prose through its per-agent execution mandate;
+`skills/iterative-review/SKILL.md#fresh-review`, included by `ship-feature` and `implement-loop`) —
+same mechanism, same gate.
 
 This exists because "remember to keep them in sync" failed, repeatedly: `fastapi>=0.115` vs `>=0.118`,
 four different `useradd` invocations, two divergent Dockerfiles. Enforce constraints with CI, not with

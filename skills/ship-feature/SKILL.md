@@ -8,8 +8,8 @@ description: >-
   execution, says "take it from here", "do the whole thing", "I'll check back later", or hands the
   work and leaves — use implement-loop instead, even when a specs/ file exists. Mode not stated →
   ask one question, supervised or autonomous; never default to either loop.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, AskUserQuestion
-version: "1.8.0"
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Skill, AskUserQuestion
+version: "1.9.0"
 ---
 
 # Ship a feature — the quality loop
@@ -101,7 +101,40 @@ from the user.
 
 ## 4. Review — `my-review`
 
-Run `my-review` on the change.
+Dispatch `my-review` as below.
+
+<!-- include: skills/iterative-review/SKILL.md#fresh-review -->
+**Each review round runs in a fresh agent.** Spawn one foreground `Agent` (general-purpose, no
+`isolation`: a `remote` fork uploads the tree, a `worktree` one reviews HEAD without the uncommitted
+work) per round; never message an earlier reviewer. Prompt contract and backgrounding caveat:
+`skills/swarm-review/SKILL.md` ("Spawn the swarm"); delivery = the `Agent` tool result or a
+message carrying the report, nothing else. The prompt states:
+
+- invoke the review skill this skill names via the Skill tool, on behalf of this skill: no
+  fix-scope menu, no self-grade;
+- the absolute path of the tree under review (the worktree, if any), used as an absolute path or
+  `-C <tree>` on every command: a subagent's cwd resets between Bash calls; every command runs
+  there except the auto-fixing gates below, and the `Reviewed-tree:` digest is stamped from that
+  tree;
+- the base ref, plus the spec, phase and AC ids when there are some;
+- from round 2: the earlier fixes, to be verified while hunting for what they introduced, and the
+  waivers (`Accept` items, in iterative-review) with their reasons, re-raised only on new evidence;
+- edit nothing in that tree, auto-fixing gates (pre-commit, formatters) included: run them in a
+  throwaway worktree;
+- return the report verbatim, closed with the `Reviewed-tree:` line, stamped by the reviewer with
+  the command from `skills/my-review/SKILL.md` ("Output") when the review skill
+  did not.
+
+On return, recompute the `Reviewed-tree:` line in the intended tree and require equality. A
+mismatch, no report, or no `Reviewed-tree:` line → re-dispatch once with the path restated, never
+triage; again → review inline and say so. Print the returned report in full, unmodified; the user
+does not see agent output. The fix decision stays here. Three rounds per change under review at
+most; a fix that would reverse an earlier round's fix is a design disagreement → stop and surface
+it; cap reached → the including skill takes the remaining findings, fixed or waived per its own
+rules. Sweep dead
+reviewers' worktrees after each round, selection command in `skills/my-review/SKILL.md` ("The
+evidence bar"). No `Agent` tool in this harness → review inline and say so.
+<!-- /include -->
 
 ## 5. Fix ALL findings — no exceptions
 
@@ -123,9 +156,9 @@ and name what the `class` fix would have cost.
 
 ## 6. Review again — `my-review`
 
-Re-run it on the fixed tree. Fixes introduce their own bugs; a fix that was never reviewed is
-unreviewed code. Repeat 5 → 6 until a review comes back clean. (`iterative-review` automates this
-converge-until-clean cycle if the rounds are piling up.)
+Re-run it on the fixed tree, dispatched as in step 4. Fixes introduce their own bugs; a fix that was
+never reviewed is unreviewed code. Repeat 5 → 6 until a review comes back clean, nothing beyond
+recorded waivers, within the step-4 round cap.
 
 ## 7. Large feature → `swarm-review`
 

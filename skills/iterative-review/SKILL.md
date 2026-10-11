@@ -1,8 +1,8 @@
 ---
 name: iterative-review
 description: Iterate review + fix rounds on changed code until the tree is clean. Use before committing when changes are substantial or risky and a single pass isn't enough — when the user says "iterative review", "review until clean", "loop review and fix", or wants findings fixed and re-reviewed automatically. One of the accepted pre-commit reviews alongside /my-review and /swarm-review (prefer these when installed, otherwise an equivalent review skill), ahead of /smart-commit or an equivalent commit flow.
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, AskUserQuestion
-version: "1.7.0"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, Skill, AskUserQuestion
+version: "1.8.0"
 ---
 
 ## Task
@@ -28,7 +28,7 @@ end of the turn, or waiting for the user to react to findings. The only legitima
 
 For each round (max 3):
 
-1. **Assess** — invoke the review skill. Capture every finding, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
+1. **Assess** — invoke the review skill per the dispatch below. Capture every finding, then keep going in the same turn: triage (step 2), display the table (step 3), fix (step 4).
 2. **Triage** each finding into exactly one bucket:
    - **Fix** — real bug, test-provable defect, missing defense-in-depth on a security-relevant path (classify against OWASP Top 10 / OWASP API Security Top 10 and CWE where it applies), documentation out of sync with the code (README / ADR / help text / API reference / OpenAPI spec / example payloads that no longer match reality), or style violation that blocks the lint/test gate.
    - **Accept** — the finding is a trade-off whose cost is acceptable (e.g., a counter that does not persist across restarts). Record *why* in the triage table and the commit message; add a code comment only when it states a constraint the code cannot show.
@@ -50,7 +50,40 @@ For each round (max 3):
    - doc-alignment check — spot-check that any README / spec / examples touched by the change still match the code (a stale curl example in README is a lint-equivalent gate failure).
 
    If any gate fails, stay in the Fix step and resolve before re-assessing.
-6. **Re-assess with a fresh pair of eyes.** Do not anchor on the previous review — re-read the code, not the prior diff summary.
+6. **Re-assess** — next round, dispatched per the block below.
+
+<!-- block: fresh-review -->
+**Each review round runs in a fresh agent.** Spawn one foreground `Agent` (general-purpose, no
+`isolation`: a `remote` fork uploads the tree, a `worktree` one reviews HEAD without the uncommitted
+work) per round; never message an earlier reviewer. Prompt contract and backgrounding caveat:
+`skills/swarm-review/SKILL.md` ("Spawn the swarm"); delivery = the `Agent` tool result or a
+message carrying the report, nothing else. The prompt states:
+
+- invoke the review skill this skill names via the Skill tool, on behalf of this skill: no
+  fix-scope menu, no self-grade;
+- the absolute path of the tree under review (the worktree, if any), used as an absolute path or
+  `-C <tree>` on every command: a subagent's cwd resets between Bash calls; every command runs
+  there except the auto-fixing gates below, and the `Reviewed-tree:` digest is stamped from that
+  tree;
+- the base ref, plus the spec, phase and AC ids when there are some;
+- from round 2: the earlier fixes, to be verified while hunting for what they introduced, and the
+  waivers (`Accept` items, in iterative-review) with their reasons, re-raised only on new evidence;
+- edit nothing in that tree, auto-fixing gates (pre-commit, formatters) included: run them in a
+  throwaway worktree;
+- return the report verbatim, closed with the `Reviewed-tree:` line, stamped by the reviewer with
+  the command from `skills/my-review/SKILL.md` ("Output") when the review skill
+  did not.
+
+On return, recompute the `Reviewed-tree:` line in the intended tree and require equality. A
+mismatch, no report, or no `Reviewed-tree:` line → re-dispatch once with the path restated, never
+triage; again → review inline and say so. Print the returned report in full, unmodified; the user
+does not see agent output. The fix decision stays here. Three rounds per change under review at
+most; a fix that would reverse an earlier round's fix is a design disagreement → stop and surface
+it; cap reached → the including skill takes the remaining findings, fixed or waived per its own
+rules. Sweep dead
+reviewers' worktrees after each round, selection command in `skills/my-review/SKILL.md` ("The
+evidence bar"). No `Agent` tool in this harness → review inline and say so.
+<!-- /block -->
 
 ## Exit conditions
 
@@ -62,7 +95,7 @@ Stop when **any** of these holds:
 
 ## Oscillation defense
 
-Reviewers in the same conversation can flip-flop a finding ("add X" → next round "remove X"). Guard against this:
+Fresh reviewers know earlier rounds only through their prompt and can still flip-flop a finding ("add X" → next round "remove X"). Guard against this:
 
 - Keep a short mental log of what was changed each round (one line per fix).
 - Before applying a re-fix, check the log: if the change would *reverse* a prior fix, the finding is a design disagreement between reviewer and implementer. **Stop the loop and surface it to the user**; do not oscillate.
