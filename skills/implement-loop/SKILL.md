@@ -7,8 +7,8 @@ description: >-
   Drives the multi-phase implementation through a disciplined autonomous dev-test-review-commit
   loop per phase, with a human checkpoint at merge. Mode not stated → ask one question, supervised
   (ship-feature) or autonomous (this skill); never default to either loop.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
-version: "1.7.0"
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, SendMessage, Skill, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
+version: "1.8.0"
 ---
 
 # Implement from handoff — the autonomous build loop
@@ -34,8 +34,8 @@ escalate on design forks, human-gate the merge, never let findings rot.
      the §0.6 batch: upgrade the spec, or run without AC tracking. Upgrade → once the branch
      exists, add what is missing, show it, wait for approval.
    - AC tracking is on when the ACs are numbered and the user did not decline it.
-3. **Branch / worktree.** Create the feature branch off the stated base. One branch for the effort;
-   per-slice commits land on it.
+3. **Branch / worktree / dev mode.** Create the feature branch off the stated base. One branch for
+   the effort; per-slice commits land on it.
    - **Isolated worktree (default when the user asks, or when the main checkout is dirty / in use):**
      create a dedicated `git worktree` so the loop never disturbs the user's working tree:
      `git worktree add -b <branch> <path> <base>` (put `<path>` outside the repo). **After creating
@@ -47,7 +47,10 @@ escalate on design forks, human-gate the merge, never let findings rot.
    - **Unless the user explicitly stated "worktree" or "in-place"** (and the checkout state does not
      force a worktree), **ask which mode** as part of the front-loaded questions (§0.6) — do not
      silently default.
-   Record the mode + worktree path on the tracking list so a resumed session finds it.
+   - **Dev in a worker or inline.** Ask in the same batch unless the user stated it; suggest
+     worker. Inline only when the user asks for it or the harness has no `Agent` tool. The review
+     runs in a fresh agent either way (§1.3).
+   Record the modes + worktree path on the tracking list so a resumed session finds them.
 4. **Confirm standing authorization.** Autonomous commits on the feature branch need the user's
    explicit go for *this run* (it overrides the usual per-commit git gate). Ask once if not already
    granted. Pushing and **merging** are NOT covered — see §5.
@@ -71,9 +74,46 @@ escalate on design forks, human-gate the merge, never let findings rot.
 dev → test + guards → review → address → coherence → commit → repeat
 ```
 
+This context orchestrates: source, DoD, decisions, gate verdicts, git. Reading or writing the tree
+at length runs in a subagent, dev per the §0.6 answer, so the loop's own context lasts the run.
+
 ### 1.1 Dev
 Implement the smallest change that moves toward the phase DoD and can stand alone. Match surrounding
 code style; comments explain WHY, not WHAT.
+
+With the §0.6 answer *worker*, delegate the slice to a foreground `Agent` (general-purpose, no
+`isolation`: a worktree fork edits a tree the gates here never run on). The source, the tracking
+list, the DoD and every gate stay here; outside the spec, its index and the tracking files this
+context edits nothing in the tree. The brief carries:
+- the slice, its DoD and the ACs it covers;
+- the tests to write: the slice's, plus the structural and behavioral guards (§1.2), spelled out;
+  with AC tracking on, each AC test cites `<source id>-AC3`;
+- the §0.6 answers it depends on;
+- the absolute path of the tree to edit (the worktree, if any), used as an absolute path or
+  `-C <tree>` on every command: a subagent's cwd resets between Bash calls;
+- the applicable rules and conventions;
+- the §3 fork list, inlined;
+- no git state change of any kind;
+- the exit contract, for this and every later message: `DONE` + files changed, or
+  `BLOCKED: <fork>` + files touched so far, the fork left undecided.
+
+Delivery = the `Agent` tool result or a message carrying `DONE` or `BLOCKED`, nothing else.
+Backgrounding caveat: `skills/swarm-review/SKILL.md` ("Spawn the swarm"). Before each `Agent` call
+or `SendMessage`, record `git -C <tree> rev-parse HEAD`, `branch --show-current`,
+`status --porcelain -uall` and, per dirty path, the digest of `git -C <tree> diff HEAD -- <path>`
+(`??` entries: `git -C <tree> hash-object <path>`); on every reply (return or `SendMessage`) compare
+HEAD and branch, and take the changed files as the new `status --porcelain -uall` entries plus the
+recorded paths whose digest moved, never from the worker's list. Drift → stop and surface: undoing
+a git mutation needs the user's gate. A backgrounding acknowledgement is not a reply: wait for the
+message. An empty set on `DONE`, or a final result without `DONE` or `BLOCKED` → resume it once via
+`SendMessage` with that state; again → implement inline and say so.
+`BLOCKED` → answer from the §0.6 record or the tracking list when already decided, else the user
+per §3, the fork restated from this context's own read of the source; then resume the same worker
+via `SendMessage` (only to the name the `Agent` call returned) and wait for its reply, the only
+completion signal. Worker unreachable → a fresh worker, same brief plus
+`git -C <tree> status --porcelain -uall` and "continue, do not restart". The worker's "tests pass"
+is a claim: §1.2 re-runs every gate and sends any red one down the §1.4 route. Inline, by answer
+or for lack of an `Agent` tool → implement here and say which.
 
 ### 1.2 Test + DUAL guards (both, every iteration — not just one)
 - With AC tracking on, each test written for an AC cites it as `<source id>-AC3` in a comment or
@@ -90,12 +130,56 @@ code style; comments explain WHY, not WHAT.
   a smoke run, an integration test, a request/response, a CLI invocation → expected exit + output.
   Static-clean but runtime-broken is the classic refactor trap; the structural guard alone does NOT
   catch it.
-- Pre-commit outcomes: auto-fix (review + re-stage), project failure (fix root cause), hook broken
-  upstream (stop and ask — never `--no-verify` / `SKIP=` without explicit per-turn authorization).
+- Pre-commit outcomes: auto-fix (review + re-stage), project failure (fix root cause, worker mode
+  via the §1.4 route), hook broken upstream (stop and ask — never `--no-verify` / `SKIP=` without
+  explicit per-turn authorization).
+- With the `Agent` tool, a foreground subagent runs these gates, given the tree's absolute path
+  for `-C <tree>` on every command. It runs each gate once as given, fixes nothing, no `SKIP=`, no
+  `--no-verify`, no git state change, and returns, per gate, the command, the exit code and the
+  last 40 lines of output, all of it when the exit code is not 0. Delivery = the tool result or a
+  message carrying those outputs, a backgrounding acknowledgement is not a reply. A result without
+  per-gate output → resume it once via `SendMessage`, again → run the gates here and say so. The
+  §1.1 snapshot and compare apply, and the changed set, usually empty, is the auto-fixes to review
+  before one more gate run, auto-fixes again → hook broken upstream. The verdict is read here from
+  that output, never from the subagent's summary.
 
 ### 1.3 Review
-Run a review pass with `my-review` (focused), `iterative-review` (converge fix rounds), or
-`swarm-review` (broad / multi-angle). Feature work MUST pass a review before commit.
+Run a review pass with `my-review` (focused) or `swarm-review` (broad / multi-angle). Feature work
+MUST pass a review before commit. `swarm-review` dispatches its own reviewers; `my-review` runs as
+below.
+
+<!-- include: skills/iterative-review/SKILL.md#fresh-review -->
+**Each review round runs in a fresh agent.** Spawn one foreground `Agent` (general-purpose, no
+`isolation`: a `remote` fork uploads the tree, a `worktree` one reviews HEAD without the uncommitted
+work) per round; never message an earlier reviewer. Prompt contract and backgrounding caveat:
+`skills/swarm-review/SKILL.md` ("Spawn the swarm"); delivery = the `Agent` tool result or a
+message carrying the report, nothing else. The prompt states:
+
+- invoke the review skill this skill names via the Skill tool, on behalf of this skill: no
+  fix-scope menu, no self-grade;
+- the absolute path of the tree under review (the worktree, if any), used as an absolute path or
+  `-C <tree>` on every command: a subagent's cwd resets between Bash calls; every command runs
+  there except the auto-fixing gates below, and the `Reviewed-tree:` digest is stamped from that
+  tree;
+- the base ref, plus the spec, phase and AC ids when there are some;
+- from round 2: the earlier fixes, to be verified while hunting for what they introduced, and the
+  waivers (`Accept` items, in iterative-review) with their reasons, re-raised only on new evidence;
+- edit nothing in that tree, auto-fixing gates (pre-commit, formatters) included: run them in a
+  throwaway worktree;
+- return the report verbatim, closed with the `Reviewed-tree:` line, stamped by the reviewer with
+  the command from `skills/my-review/SKILL.md` ("Output") when the review skill
+  did not.
+
+On return, recompute the `Reviewed-tree:` line in the intended tree and require equality. A
+mismatch, no report, or no `Reviewed-tree:` line → re-dispatch once with the path restated, never
+triage; again → review inline and say so. Print the returned report in full, unmodified; the user
+does not see agent output. The fix decision stays here. Three rounds per change under review at
+most; a fix that would reverse an earlier round's fix is a design disagreement → stop and surface
+it; cap reached → the including skill takes the remaining findings, fixed or waived per its own
+rules. Sweep dead
+reviewers' worktrees after each round, selection command in `skills/my-review/SKILL.md` ("The
+evidence bar"). No `Agent` tool in this harness → review inline and say so.
+<!-- /include -->
 
 ### 1.4 Address findings — PROPERLY, no shortcuts
 - Fix the **root cause, not the symptom**. Cover the **details**, not just the headline.
@@ -103,16 +187,21 @@ Run a review pass with `my-review` (focused), `iterative-review` (converge fix r
   inputs, absent env/config/credentials, partial or out-of-order results, boundary values,
   concurrency / cancellation / mid-operation failure, error and exception flows, lazy/conditional
   paths that only fire at runtime, resource cleanup on failure.
+- Worker mode: fixes go via `SendMessage` to the worker that built the slice, under the §1.1
+  contract; wait for its reply before §1.2. Slice built by fan-out (§6), or worker gone → a fresh
+  worker with a §1.1 brief plus the findings.
 - A finding is **addressed** only when its edge cases are handled **or** explicitly **waived with
   reasoning**. Every waiver goes on the unaddressed-points list — never silent.
-- **Re-run 1.3 on what you just changed** before 1.5 — a fix is unreviewed code, and 1.5 is a
-  coherence read, not a review.
+- **Re-run 1.3 on the fixes** (same slice, same round cap) before 1.5 — a fix is
+  unreviewed code, and 1.5 is a coherence read, not a review.
 
 ### 1.5 Coherence check (last gate before commit)
 A deliberate end-to-end read of the slice's logic: does it actually do what it claims; are all edges
 consistent; do the non-happy paths (errors, empties, missing deps) behave sanely; does it hold the
 phase invariant. Distinct from review — review finds issues, coherence confirms the whole still
-makes sense.
+makes sense. Read the slice's changed set, every reply's since the slice began, with
+`git -C <tree> diff HEAD -- <paths>` and `git -C <tree> diff --no-index /dev/null <path>` for `??`
+paths, not the tree.
 
 ### 1.6 Commit (autonomous on the feature branch)
 Commit via `smart-commit` (branch + Conventional Commit + gated push). Subject concise, body only for
@@ -164,9 +253,21 @@ watches phase by phase, with a review gate they attend — typically a `specs/NN
 `spec-feature` — → `ship-feature`. Same discipline, tighter human leash.
 
 ## 6. Composition
-For a **wide** phase, the dev step can delegate the parallel build to a fan-out executor (e.g. a
-wave-runner / parallel-agent skill), then run this loop's guards, review, and commit around the
-result. This skill is the disciplined outer loop; a parallel executor is one primitive inside it.
+For a **wide** phase, the §1.1 worker is replaced by a fan-out executor (e.g. a wave-runner /
+parallel-agent skill); this loop's guards, review, and commit still run around the result. This
+skill is the disciplined outer loop; a parallel executor is one primitive inside it.
+
+Fan-out without an executor skill, in worker mode: one message, one §1.1 `Agent` per slice, same
+tree.
+- Only when the phase holds at least three slices with disjoint paths. Each brief lists the paths
+  its worker owns, test files included, forbids every other path, and runs only those tests, the
+  guards waiting for the §1.2 pass.
+- Same tree, no worktree per worker. Merging them back brings conflicts and nothing else.
+- No gate while a worker runs. Once every worker has returned `DONE`, one §1.2 pass over the
+  union, then §1.3 over the union as one change under review.
+- The changed set is read once, after the last `DONE`, as in §1.1. A path in it outside every
+  declared set → stop and surface, as for git drift.
+- Phases never run in parallel. Phase N+1 starts on phase N's DoD.
 
 ## 7. Exit
 The loop ends when all phases meet DoD, the unaddressed list is empty or every remaining item is a
