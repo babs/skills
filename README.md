@@ -121,6 +121,7 @@ without it they run inline and say so.
 | `my-review` | `/my-review` | Thorough review of all project changes; auto-triggers before committing feature work; self-grades the fixes it applied |
 | `iterative-review` | `/iterative-review` | Iterate review + fix rounds on changed code until the tree is clean, each round in a fresh reviewer agent; self-grades the fixes it applied |
 | `swarm-review` | `/swarm-review` | Multi-perspective parallel review: one focused agent per angle (security, resiliency, quality, functional, docs, coherence, tests), then consolidated findings |
+| `council-review` | `/council-review` | Cross-provider review loop: Claude Opus and GPT Sol review in parallel, score out of 10, fix and re-review until both approve (T3 `delegate_task`, `codex exec` elsewhere); adapted from [t3dotgg/tstack](https://github.com/t3dotgg/tstack) `council` + `sol-loop` (MIT, notice in `skills/council-review/LICENSE-tstack`) |
 | `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, push, and MR/PR creation with user validation; auto-triggers on any commit intent in interactive sessions |
 
 ### Tools / helpers
