@@ -130,6 +130,8 @@ without it they run inline and say so.
 |-------|-----------|-------------|
 | `privatebin` | `/privatebin` | Upload text or a file to PrivateBin, returning both the share URL and the delete URL |
 | `md-to-html-clipboard` | `/md-to-html-clipboard` | Render Markdown to HTML into the system clipboard for paste into Teams/Outlook/Confluence |
+| `sitrep` | `/sitrep` | Live status of the current work, read now: done, in progress, blocked, what needs the user; in T3 Code, one line per thread of the project |
+| `shall-settle` | `/shall-settle` | Settle a T3 Code thread only once nothing waits on the user, an agent, a watcher, a schedule or unpushed work |
 
 ## Caveat — init skills need `rules/`
 
