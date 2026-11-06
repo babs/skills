@@ -17,6 +17,8 @@ import unittest
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
+# A git hook exports GIT_DIR and GIT_INDEX_FILE: inherited, they aim the scratch repos at the real one.
+ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
 
 GOOD_SKILL = """\
 ---
@@ -47,7 +49,7 @@ def run(root: Path, env: dict[str, str] | None = None) -> subprocess.CompletedPr
         ["bash", str(root / "scripts" / "validate-skills.sh")],
         capture_output=True,
         text=True,
-        env={**os.environ, "VALIDATE_SKILLS_NO_SELFTEST": "1", **(env or {})},
+        env={**ENV, "VALIDATE_SKILLS_NO_SELFTEST": "1", **(env or {})},
     )
 
 
@@ -581,7 +583,7 @@ def git(root: Path, *args: str) -> None:
         check=True,
         capture_output=True,
         env={
-            **os.environ,
+            **ENV,
             "GIT_AUTHOR_NAME": "t",
             "GIT_AUTHOR_EMAIL": "t@example.invalid",
             "GIT_COMMITTER_NAME": "t",
@@ -699,7 +701,7 @@ class VersionBumpGateTest(unittest.TestCase):
         # and no history beyond it.
         base = subprocess.run(
             ["git", "-C", str(self.root), "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, env=ENV,
         ).stdout.strip()
         git(self.root, "update-ref", "-d", "refs/remotes/origin/master")
         self._edit(self._skill(), None)
@@ -710,7 +712,7 @@ class VersionBumpGateTest(unittest.TestCase):
     def test_github_pull_request_base_is_used(self) -> None:
         base = subprocess.run(
             ["git", "-C", str(self.root), "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, env=ENV,
         ).stdout.strip()
         git(self.root, "update-ref", "-d", "refs/remotes/origin/master")
         event = self.root / "event.json"
