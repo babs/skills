@@ -206,7 +206,7 @@ claude plugin validate .
 # What CI runs — the local hook invokes scripts/validate-skills.sh: frontmatter; rule and skill
 # references AND the sections they point at; the Go build-var set agreeing between rules/golang.md
 # and go-init; block drift incl. both gates' own unit tests; pin uniformity; the per-skill version
-# bump; retired md2clip command forms plus md2clip --selftest; the review templates' finding typography
+# bump; retired md2clip command forms plus md2clip --selftest; recall's search tests; the review templates' finding typography
 pre-commit run --all-files
 ```
 
