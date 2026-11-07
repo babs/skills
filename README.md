@@ -87,8 +87,11 @@ collides with another plugin.
 > asking to commit routes through `smart-commit`, writing a Dockerfile routes through
 > `dockerfile-init`. Installing the plugin therefore steers commits, reviews, and
 > project scaffolding through these flows in every session. This is safe for
-> mutating flows because the skills gate every git mutation interactively before
-> running it. To opt out, disable the plugin, or block a single skill with a
+> mutating flows because `smart-commit` gates every git mutation interactively before
+> running it. Two skills act unprompted once ordered: `implement-loop` commits on its
+> feature branch, and `land-and-release` delivers up to the scope named, a bare "land"
+> reaching dev, lab or local, and production only if named or if the project's notes say so.
+> To opt out, disable the plugin, or block a single skill with a
 > permissions deny rule, e.g. `"deny": ["Skill(skill:*smart-commit)"]`.
 
 ### Project init
@@ -114,7 +117,7 @@ After `spec-feature`, the agent offers both loops and the user picks: `ship-feat
 `ship-feature`, `implement-loop` and `iterative-review` dispatch subagents through the `Agent` tool;
 without it they run inline and say so.
 
-### Review → commit
+### Review → commit → land
 
 | Skill | Invocation | Description |
 |-------|-----------|-------------|
@@ -123,6 +126,8 @@ without it they run inline and say so.
 | `swarm-review` | `/swarm-review` | Multi-perspective parallel review: one focused agent per angle (security, resiliency, quality, functional, docs, coherence, tests), then consolidated findings |
 | `council-review` | `/council-review` | Cross-provider review loop: Claude Opus and GPT Sol review in parallel, score out of 10, fix and re-review until both approve (T3 `delegate_task`, `codex exec` elsewhere); adapted from [t3dotgg/tstack](https://github.com/t3dotgg/tstack) `council` + `sol-loop` (MIT, notice in `skills/council-review/LICENSE-tstack`) |
 | `smart-commit` | `/smart-commit` | Interactive branch, conventional commit, push, and MR/PR creation with user validation; auto-triggers on any commit intent in interactive sessions |
+| `land-and-release` | `/land-and-release` | Delegated delivery from branch to the scope named: review, PR, CI, merge, issues, release; "land" also delivers through dev, lab or local and reads the version live. Production only when named or when the project's notes say so |
+| `babysit` | `/babysit` | Watch CI, a deploy or a long job with a cheap watcher agent (in T3, the PR watch) that reports the raw outcome; the main thread decides |
 
 ### Tools / helpers
 
@@ -132,6 +137,8 @@ without it they run inline and say so.
 | `md-to-html-clipboard` | `/md-to-html-clipboard` | Render Markdown to HTML into the system clipboard for paste into Teams/Outlook/Confluence |
 | `sitrep` | `/sitrep` | Live status of the current work, read now: done, in progress, blocked, what needs the user; in T3 Code, one line per thread of the project |
 | `shall-settle` | `/shall-settle` | Settle a T3 Code thread only once nothing waits on the user, an agent, a watcher, a schedule or unpushed work |
+| `recall` | `/recall` | Find past conversations, decisions and commands by topic across T3 threads, Claude Code transcripts, project memories and shell history |
+| `handoff` | `/handoff` | Write a handoff document into the project scratchpad and start the next agent with the tools at hand, or print a paste-ready prompt; adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, notice in `skills/handoff/LICENSE`) |
 
 ## Caveat — init skills need `rules/`
 
@@ -145,6 +152,9 @@ skills are best used through the Claude plugin install.
 For `go-init` and `dockerfile-init` it is a hard dependency: their Dockerfile and
 `.dockerignore` templates live **only** in `rules/dockerfile.md` (one copy, so two skills
 cannot emit divergent ones), so a standalone install skips those files entirely.
+
+`land-and-release` calls `/my-review`, `/smart-commit` and `/babysit`. On a standalone install it falls back to
+an equivalent review skill, a direct commit and `gh pr checks --watch`.
 
 `rules/` also holds standalone reference standards (currently `github-actions.md`)
 not wired to any skill — kept as published coding standards.

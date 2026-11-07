@@ -8,7 +8,7 @@
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image),
 #      and (4b) the bundled db_migrate.py's __version__ is the one rules/postgres.md states,
 #      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
-#      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest),
+#      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest and recall's search tests),
 #   4c. a skills/*/SKILL.md changed since the merge-base carries a higher `version:`,
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
 #   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent)
@@ -189,6 +189,10 @@ fi
 # under test, or the gate stops gating it. md2clip's Teams HTML transform is pure text — the
 # --selftest path exercises it with no pandoc/clipboard, so it runs headless in CI too.
 md2clip="$ROOT/skills/md-to-html-clipboard/md2clip"
+if [[ -d "$ROOT/skills/recall" ]] && ! python3 "$ROOT/skills/recall/scripts/test_search.py" 2>/dev/null; then
+  echo "ERROR: recall search tests failed — run: python3 skills/recall/scripts/test_search.py"
+  rc=1
+fi
 if [[ -f "$md2clip" ]] && ! bash "$md2clip" --selftest >/dev/null; then
   echo "ERROR: md2clip --selftest failed — the Teams transform drifted"
   rc=1
