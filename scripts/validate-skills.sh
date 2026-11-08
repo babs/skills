@@ -8,7 +8,7 @@
 #   4. version-pinned values duplicated across files are uniform (uv pin, python base image),
 #      and (4b) the bundled db_migrate.py's __version__ is the one rules/postgres.md states,
 #      no doc still prescribes a retired md2clip command form, and every gfm→html pandoc call keeps
-#      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest and recall's search tests),
+#      its --no-highlight/--wrap=none flags (plus md2clip's own --selftest, babysit watch-run.sh --selftest and recall's search tests),
 #   4c. a skills/*/SKILL.md changed since the merge-base carries a higher `version:`,
 #   5. a deps list naming OTel instrumentors also carries opentelemetry-distro,
 #   6. the review templates keep their hand-placed finding typography (hard break + NBSP indent)
@@ -191,6 +191,11 @@ fi
 md2clip="$ROOT/skills/md-to-html-clipboard/md2clip"
 if [[ -d "$ROOT/skills/recall" ]] && ! python3 "$ROOT/skills/recall/scripts/test_search.py" 2>/dev/null; then
   echo "ERROR: recall search tests failed — run: python3 skills/recall/scripts/test_search.py"
+  rc=1
+fi
+watchrun="$ROOT/skills/babysit/watch-run.sh"
+if [[ -f "$watchrun" ]] && ! bash "$watchrun" --selftest >/dev/null; then
+  echo "ERROR: babysit watch-run.sh --selftest failed — the fail-fast watcher drifted"
   rc=1
 fi
 if [[ -f "$md2clip" ]] && ! bash "$md2clip" --selftest >/dev/null; then
