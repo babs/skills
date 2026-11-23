@@ -2,8 +2,8 @@
 name: shall-settle
 description: Settle a T3 Code thread once nothing is left waiting on an agent, a watcher or the user. Use when the user says "shall-settle", "settle the thread", "can we settle?", "put this thread away if it's done", or asks whether a T3 thread still waits on anything.
 # ToolSearch: T3 tools are deferred and must be loaded before the first call.
-allowed-tools: Bash, ToolSearch, CronList, mcp__t3-code__t3_pending_request, mcp__t3-code__t3_thread_list, mcp__t3-code__t3_thread_read, mcp__t3-code__list_scheduled_tasks, mcp__t3-code__unwatch_pull_request, mcp__t3-code__t3_thread_organize
-version: "1.0.0"
+allowed-tools: Bash, ToolSearch, CronList, mcp__t3-code__t3_pending_request, mcp__t3-code__t3_thread_list, mcp__t3-code__t3_thread_read, mcp__t3-code__list_scheduled_tasks, mcp__t3-code__unwatch_pull_request, mcp__t3-code__t3_thread_organize, mcp__t3-code__t3_thread_update
+version: "1.1.0"
 ---
 
 # Shall settle
@@ -12,9 +12,13 @@ Settle only on proof that nothing waits. One open item keeps the thread active. 
 
 ## Scope
 
-- T3 only. If `mcp__t3-code__t3_thread_organize` does not load (ToolSearch `select:` once), say this is not a T3 session and stop.
+- T3 only. If either `mcp__t3-code__t3_thread_organize` or `mcp__t3-code__t3_thread_update` does not load (one ToolSearch `select:` for both), say this is not a T3 session and stop.
 - Target: this thread by default; its id is `currentThreadId` from `t3_thread_list`. Given a thread id or link, read that thread with `t3_thread_read` (`view: "activity"`, small `limit`, `afterPosition` near its `itemCount`, so the latest items come back) instead of relying on memory.
-- Another thread: delegated tasks, background commands and session crons belong to its own session and no tool lists them from here. Read them from its activity; an item the activity cannot show is `open: unverified`.
+- Another thread: delegated tasks, background commands and session crons belong to its own session and no tool lists them from here. Read them from its activity; an item the activity cannot show is `open: unverified`. Pass its `threadId` to every T3 call that acts on it (`t3_thread_update`, `unwatch_pull_request`, `t3_thread_organize`); omitted, they act on this thread.
+
+## Clear the marker
+
+First step, before any check. The attention marker is `⁉️` (U+2049, with or without U+FE0F). The title is `thread.title` from `t3_thread_read` on the target. If it starts with the marker, strip markers and spaces from its start until it begins with neither, then `t3_thread_update action:rename` with the result. If nothing is left, skip the rename; Decide handles it. A marker elsewhere in the title is user content: leave it.
 
 ## Check
 
@@ -36,17 +40,19 @@ Live checks only, run in parallel. Every item is `clear` or `open: <reason>`.
 
 ## Decide
 
-- Everything `clear`: `unwatch_pull_request` on each PR linked to the thread (its result says whether it was watched), then `t3_thread_organize action:settle` (pass the target's `threadId` to both for another thread, omit it for this one; settle applies at turn end, and a failed turn or queued message keeps the thread active).
-- Anything `open`: do not settle. Do not start, retry or fix anything to make it clear. This skill only judges.
+- Everything `clear`: `unwatch_pull_request` on each PR linked to the thread (its result says whether it was watched), then `t3_thread_organize action:settle` (settle applies at turn end, and a failed turn or queued message keeps the thread active). A title that was only markers gets `t3_thread_update action:regenerate_title`.
+- Anything `open`: do not settle. Re-read `thread.title` (it may have changed during the checks), strip it the same way, and rename the thread to `⁉️ <cleaned title>`, or `⁉️` if the cleaned title is empty (`t3_thread_update action:rename`). Do not start, retry or fix anything to make it clear. Beyond the marker, this skill only judges.
 
 ## Output
 
 In the user's language, 6 lines at most:
 
 ```
-Settled: <thread>                         (or: Not settled: <thread>)
+Settled: <thread> · marker <m>           (or: Not settled: <thread> · marker <m>)
 Open  <waits on>: <item>, <what clears it>
 Clear <n> checks: user, agents, background, watches, schedules, promises, tree
 ```
+
+`<m>`: `set` whenever something is open, `cleared` when settled after removing one (`cleared, title regenerating` after `regenerate_title`, which is async), `unchanged` otherwise.
 
 Every line comes from a check made in this run, with the command that showed it when it is not obvious.
