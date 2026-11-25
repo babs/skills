@@ -1,9 +1,9 @@
 ---
 name: babysit
-description: Use when the user says "babysit", "babysit the PR", "babysit the deploy", "watch the CI", "monitor the PR", "monitor the deploy", "tell me when CI is done", "tell me when the deploy is done", or when CI, a pipeline, a release workflow, a rollout or a long job must be watched until it ends. Not for a one-shot status question (sitrep).
+description: Use when the user says "babysit", "babysit the PR", "babysit the deploy", "watch the CI", "monitor the PR", "monitor the deploy", "tell me when CI is done", "tell me when the deploy is done", or when CI, a pipeline, a release workflow, a rollout or a long job must be watched until it ends. Never write a loop that waits on `gh` or `glab` yourself: invoke this skill instead. Not for a one-shot status question (sitrep).
 # ToolSearch: T3 tools are deferred and must be loaded before the first call.
 allowed-tools: Bash, Agent, ToolSearch, mcp__t3-code__watch_pull_request, mcp__t3-code__unwatch_pull_request
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # Babysit
@@ -27,7 +27,7 @@ version: "1.1.0"
 | GitHub workflow run, release | `bash <skill-dir>/watch-run.sh github <owner/repo> <run-id>`: reads every job's conclusion each poll (`gh run watch --exit-status` waits for the whole run) |
 | GitLab MR, pipeline | `bash <skill-dir>/watch-run.sh gitlab <group/project> <pipeline-id>` (`glab ci status --live` waits for the whole pipeline) |
 | k8s rollout | `kubectl rollout status deploy/<name> --timeout=10m`, then read the running image tag and the pods' restarts and waiting reasons (`kubectl get pods -l <selector> -o jsonpath='{range .items[*]}{.metadata.name} {.status.containerStatuses[*].restartCount} {.status.containerStatuses[*].state.waiting.reason}{"\n"}{end}'`): rollout status succeeds even after a restart |
-| anything else | Bash `run_in_background` with a `timeout`-bounded until-loop |
+| anything else | Bash `run_in_background` with a `timeout`-bounded until-loop. Run its read command once by hand first, never silence its stderr, and leave the loop when the read fails |
 
 `<skill-dir>` is this skill's directory: put its absolute path in the watcher prompt. `watch-run.sh` exits 0 on success; 1 on a failed job (`FAILED`, with the job names and URLs) or a run that ended without success (`NOT-SUCCESS`, e.g. skipped); 3 when `gh`/`glab` keeps failing (it prints the error); 4 when the run waits for an approval or a manual job (`WAITING`).
 

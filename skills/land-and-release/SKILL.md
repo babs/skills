@@ -1,9 +1,9 @@
 ---
 name: land-and-release
-description: Use when the user orders a landing, such as "land", "land it", "go land", "land the feature", "land and release", "review, commit, land", "merge and release", "merge if confident", "up to the merge", "push, merge and release", "cut a release", "take it to prod", or hands over a reviewed branch or an open PR/MR to finish. Also when a watched PR goes green on work already delegated up to merge or beyond. Not for land as a plain verb or under a negation ("it will land", "no land without a go"), nor a commit, push or PR/MR with no merge asked (smart-commit). Unbuilt work goes through ship-feature or implement-loop first.
+description: Use when the user orders a landing, such as "land", "land it", "go land", "land the feature", "land and release", "review, commit, land", "merge", "merge the PR", "merge the MR", "merge and release", "merge if confident", "up to the merge", "push, merge and release", "cut a release", "take it to prod", or hands over a reviewed branch or an open PR/MR to finish. Also when a watched PR goes green on work already delegated up to merge or beyond. Not for land or merge as a plain verb or under a negation ("it will land", "merge these files", a merge conflict, "no land without a go"), nor a commit, push or PR/MR with no merge asked (smart-commit). Unbuilt work goes through ship-feature or implement-loop first.
 # ToolSearch: T3 tools are deferred and must be loaded before the first call.
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, Skill, AskUserQuestion, ToolSearch, mcp__t3-code__unwatch_pull_request
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 # Land and release
