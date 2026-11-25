@@ -3,7 +3,7 @@ name: shall-settle
 description: Settle a T3 Code thread once nothing is left waiting on an agent, a watcher or the user. Use when the user says "shall-settle", "settle the thread", "can we settle?", "put this thread away if it's done", or asks whether a T3 thread still waits on anything.
 # ToolSearch: T3 tools are deferred and must be loaded before the first call.
 allowed-tools: Bash, ToolSearch, CronList, mcp__t3-code__t3_pending_request, mcp__t3-code__t3_thread_list, mcp__t3-code__t3_thread_read, mcp__t3-code__list_scheduled_tasks, mcp__t3-code__unwatch_pull_request, mcp__t3-code__t3_thread_organize, mcp__t3-code__t3_thread_update
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # Shall settle
@@ -45,14 +45,27 @@ Live checks only, run in parallel. Every item is `clear` or `open: <reason>`.
 
 ## Output
 
-In the user's language, 6 lines at most:
+Reply with this Markdown only, settled or not: no code fence, no prose around it, all of it in the user's language. One bullet per open item, all of them: the item and what clears it, a fragment, no rationale ("merge `feat/x` → your go", not "I'm waiting for your go to merge…"). A waiver, or the command that showed an item when it is not obvious, goes in parentheses on the line it supports. Keep the blank lines: without them Markdown folds the lines together.
 
+Settled:
+
+```markdown
+Settled: <thread> · marker <m>
+
+Clear 7 checks: user, agents, background, watches, schedules, promises, tree
 ```
-Settled: <thread> · marker <m>           (or: Not settled: <thread> · marker <m>)
-Open  <waits on>: <item>, <what clears it>
-Clear <n> checks: user, agents, background, watches, schedules, promises, tree
+
+Not settled (`Clear` line omitted when no check is clear):
+
+```markdown
+Not settled: <thread> · marker set
+
+- **<waits on>**: <item> → <what clears it>
+- **<waits on>**: <item> → <what clears it>
+
+Clear <n> checks: <the clear ones>
 ```
 
-`<m>`: `set` whenever something is open, `cleared` when settled after removing one (`cleared, title regenerating` after `regenerate_title`, which is async), `unchanged` otherwise.
+`<m>`: `cleared` after removing a marker (`cleared, title regenerating` after `regenerate_title`, which is async), `unchanged` otherwise.
 
-Every line comes from a check made in this run, with the command that showed it when it is not obvious.
+Every line comes from a check made in this run.
